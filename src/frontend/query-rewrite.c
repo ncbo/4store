@@ -379,7 +379,7 @@ void __create_rule_subp(int rule_i) {
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,x,p,y);
     __SET_ID(rule_i,__new_cpy_str("SUBP"));
     __SET_EXEC_FLAG(rule_i,0x0001);
-    __SET_MAXREC(rule_i,7);
+    __SET_MAXREC(rule_i,3);
     __create_quads_rids(rule_i);
 }
 
@@ -395,7 +395,7 @@ void __create_rule_subc(int rule_i) {
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,a,sc,c);
     __SET_ID(rule_i,__new_cpy_str("SUBC"));
     __SET_EXEC_FLAG(rule_i,0x0002);
-    __SET_MAXREC(rule_i,40);
+    __SET_MAXREC(rule_i,5);
     __create_quads_rids(rule_i);
 }
 
@@ -550,6 +550,8 @@ void __fs_rule_rid_or_var_print(struct rid_or_var *r) {
             printf(" %llx ",r->vrid->data[i]);
         }
     } 
+    if (!r->var && !r->vrid)
+         printf(" null ");
 }
 
 void ____fs_rule_translation_table_print(struct translation_table *ttable) {
@@ -611,7 +613,9 @@ int __fs_rule_translation_table_fill(
         else
             rule_bind->var = NULL;
     }
-    //____fs_rule_translation_table_print(ttable);
+#ifdef DEBUG_RULES
+    ____fs_rule_translation_table_print(ttable);
+#endif
     return 1;
 }
 
@@ -672,8 +676,19 @@ int fs_rule_bind_expand(fs_rule_query *rq, fs_rule_bind_block *block,
     /* if comp(i,bind) == comp(i,rule_consq) then replace(comp(i,ant),comp(i,bind)) */
     FOR_EACH_CONDITION(j,rule,antecedents,antc) {
         fs_rule_bind *ant_copy = __fs_rule_rid_copy(antc);
-        for (int i=0; i<4; i++) { /* for each m,s,p,o in table */
-            for (int t=0; t<4; t++) { /* for each m,s,p,o in antc */
+
+        /* model is treated differently */
+        if (ttable.table[0][1].vrid != NULL &&
+            ttable.table[0][1].vrid->length > 0) {
+            if (ant_copy->vrid_quad[0])
+                fs_rid_vector_free(ant_copy->vrid_quad[0]);
+            ant_copy->vrid_quad[0] = fs_rid_vector_new(0);
+            fs_rid_vector_append_vector(ant_copy->vrid_quad[0],
+                                        ttable.table[0][1].vrid);                
+       }
+
+        for (int i=1; i<4; i++) { /* for each m,s,p,o in table */
+            for (int t=1; t<4; t++) { /* for each m,s,p,o in antc */
                 if (ttable.table[i][0].var != NULL &&
                     antc->vars[t] != NULL &&
                     !CMP_VAR(ttable.table[i][0].var, antc->vars[t])) {
@@ -696,7 +711,8 @@ int fs_rule_bind_expand(fs_rule_query *rq, fs_rule_bind_block *block,
                         ant_copy->vars[t] = fs_rule_rasqal_var_copy(ttable.table[i][1].var);
                     } else 
                         ant_copy->vars[t] = NULL;
-                }
+
+                } 
             }
         }
         block->binds[bind_index + res] = ant_copy;
@@ -758,6 +774,10 @@ int fs_rule_expand_bind_block_expand(fs_rule_query *rq,
             fs_rule_bind_block *newb = 
                         fs_rule_bind_block_expand_with_rule(rq, block, rule_copy);
             if (newb) {
+#ifdef DEBUG_RULES
+                fs_error(LOG_ERR,"new block"); 
+                fs_rule_bind_block_print(newb);
+#endif
                 newb->iteration = block->iteration + 1;
                 block->expanded = 1;
                 blocks_created++;
@@ -857,6 +877,10 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
         }
         if (bind->vrid_quad[q] && bind->vrid_quad[q]->length > 0)
             fs_rid_vector_append_vector(slot[q], bind->vrid_quad[q]);
+#ifdef DEBUG_RULES
+       fs_error(LOG_ERR,"slot[%d]",q); 
+       fs_rid_vector_print(slot[q],1,stdout);
+#endif
     }
 
     if (!tobind)
