@@ -102,7 +102,7 @@ static void fs_free_global_elements() {
 
 static void query_log_open (const char *kb_name)
 {
-  char *filename = g_strdup_printf(FS_HTTP_LOG "/query-%s.log", kb_name);
+  char *filename = g_strdup_printf("/var/log/4store/query-%s.log", kb_name);
 
   ql_file= fopen(filename, "a");
   if (ql_file) {
@@ -138,7 +138,8 @@ static void query_log (client_ctxt *ctxt, const char *query)
     if (!ctxt->apikey)
       fprintf(ql_file, "##### %s Q%u-pid%u\n%s\n", time_str, ctxt->query_id, cpid, query);
     else
-      fprintf(ql_file, "##### %s Q%u-pid%u %s\n%s\n", time_str, ctxt->query_id, cpid, ctxt->apikey, query);
+      fprintf(ql_file, "##### %s Q%u-pid%u %s %s\n%s\n", 
+            time_str, ctxt->query_id, cpid, ctxt->apikey, ctxt->rules, query);
     fflush(ql_file);
   }
 }
@@ -331,6 +332,8 @@ static void client_free(client_ctxt *ctxt)
   free(ctxt->request);
   if (ctxt->apikey)
     g_free(ctxt->apikey);
+  if (ctxt->rules)
+    g_free(ctxt->rules);
   g_free(ctxt);
 }
 
@@ -351,7 +354,7 @@ static void http_query_worker(gpointer data, gpointer user_data)
   ctxt->start_time = fs_time();
   ctxt->qr = fs_query_execute(query_state, fsplink, bu, ctxt->query_string, 
                               ctxt->query_flags, opt_level, ctxt->soft_limit, 
-                              ctxt->apikey, 0);
+                              ctxt->apikey,ctxt->rules, 0);
   if (ctxt->qr->errors) {
     http_error(ctxt, "400 Parser error");
     GSList *w = ctxt->qr->warnings;
@@ -1104,9 +1107,9 @@ static void http_get_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
         url_decode(value);
         if (strlen(value)) { /* ignore empty string, default form value */
           ctxt->soft_limit = atoi(value);
-	  if(ctxt->soft_limit == 0) {
-  	    ctxt->soft_limit = -1;
-	  }
+          if(ctxt->soft_limit == 0) {
+             ctxt->soft_limit = -1;
+          }
         }
       } else if (!strcmp(key, "output") && value) {
         url_decode(value);
@@ -1117,9 +1120,16 @@ static void http_get_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
       } else if (!strcmp(key, "apikey") && value) {
         url_decode(value);
         ctxt->apikey = g_strdup(value);
+      } else if (!strcmp(key, "rules") && value) {
+        url_decode(value);
+        ctxt->rules = g_strdup(value);
       }
       qs = next;
     }
+    if (!ctxt->rules) {
+      ctxt->rules = g_strdup("DEFAULT");
+    }
+
     if (graph_access_control && !ctxt->apikey) {
         http_error(ctxt, "403 forbidden - apikey parameter has to be included in request.");
         http_close(ctxt);
@@ -1250,9 +1260,6 @@ static void http_post_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
         if (strlen(value)) { /* ignore empty string, default form value */
           ctxt->soft_limit = atoi(value);
         }
-      } else if (!strcmp(key, "output") && value) {
-        url_decode(value);
-        ctxt->output = g_strdup(value);
       } else if (!strcmp(key, "default-graph-uri") && value) {
         url_decode(value);
         default_graph = value;

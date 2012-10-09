@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
         fsp_init_acl_system(link);
 
     qs->verbosity = verbosity;
-    fs_query *qr = fs_query_execute(qs, link, bu, query, flags, opt_level, soft_limit, apikey, explain);
+    fs_query *qr = fs_query_execute(qs, link, bu, query, flags, opt_level, soft_limit, apikey,"DEFAULT", explain);
     if (fs_query_errors(qr)) {
         ret = 1;
     }
@@ -295,7 +295,7 @@ static void programatic_io(fsp_link *link, raptor_uri *bu, const char *query_lan
                 printf("Q: %s\n", query);
             }
 	    fs_query *tq = fs_query_execute(qs, link, bu, query,
-		    result_flags, opt_level, soft_limit, apikey, 0);
+		    result_flags, opt_level, soft_limit, apikey,"DEFAULT", 0);
 	    fs_query_results_output(tq, result_format, 0, stdout);
             if (show_timing) {
                 printf("# time: %f s\n", fs_time() - fs_query_start_time(tq));
@@ -419,7 +419,7 @@ static void interactive(fsp_link *link, raptor_uri *bu, const char *result_forma
                 then = fs_time();
             }
 	    fs_query *tq = fs_query_execute(qs, link, bu, query,
-		    result_flags, opt_level, soft_limit, apikey, 0);
+		    result_flags, opt_level, soft_limit, apikey,"DEFAULT", 0);
             if (show_timing) {
                 double now = fs_time();
                 printf("# bind time %.3fs\n", now-then);

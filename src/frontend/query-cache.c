@@ -257,11 +257,9 @@ int fs_bind_cache_wrapper_intl(fs_query_state *qs, fs_query *q, int all,
             for (int s=0; s<slots; s++) {
                 (*result)[s] = fs_rid_vector_new(0);
             }
-
             return 0;
         }
     }
-
     int cachable = 0;
     fs_rid cache_hash = 0;
     fs_rid cache_key[4];
@@ -365,7 +363,6 @@ int fs_bind_cache_wrapper_intl(fs_query_state *qs, fs_query *q, int all,
         }
         g_static_mutex_unlock(&qs->cache_mutex);
     }
-
     return ret;
 }
 
