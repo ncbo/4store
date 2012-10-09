@@ -70,6 +70,7 @@ static int unsafe = 0;
 static int default_graph = 0;
 static int cache_stats = 0;
 static int graph_access_control = 0;
+static int query_rewriting = 0;
 static int soft_limit = 0; /* default value for soft limit */
 static int opt_level = -1;  /* default value for optimisation level */
 static int cors_support = -1; /* cross-origin resource sharing (CORS) support */
@@ -1120,13 +1121,14 @@ static void http_get_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
       } else if (!strcmp(key, "apikey") && value) {
         url_decode(value);
         ctxt->apikey = g_strdup(value);
-      } else if (!strcmp(key, "rules") && value) {
-        url_decode(value);
-        ctxt->rules = g_strdup(value);
+      } else if (query_rewriting && 
+                 !strcmp(key, "rules") && value) {
+          url_decode(value);
+          ctxt->rules = g_strdup(value);
       }
       qs = next;
     }
-    if (!ctxt->rules) {
+    if (!ctxt->rules && query_rewriting) {
       ctxt->rules = g_strdup("DEFAULT");
     }
 
@@ -1862,7 +1864,8 @@ static int server_setup (int background, const char *host, const char *port)
     fs_error(LOG_ERR,"Cache stats enabled at /status/cache.");
   if (graph_access_control)
     fs_error(LOG_ERR,"Access control for graphs is enabled.");
-  
+  if (query_rewriting)
+    fs_error(LOG_ERR,"Rule engine (query rewriting) is enabled."); 
   return srv;
 }
 
@@ -1955,7 +1958,7 @@ int main(int argc, char *argv[])
 
 
   int o;
-  while (!help && (o = getopt(argc, argv, "DCAH:p:Uds:O:Xc:")) != -1) {
+  while (!help && (o = getopt(argc, argv, "DCRAH:p:Uds:O:Xc:")) != -1) {
     switch (o) {
       case 'D':
         daemonize = 0;
@@ -1993,6 +1996,9 @@ int main(int argc, char *argv[])
         break;
       case 'A':
         graph_access_control = 1;
+        break;
+      case 'R':
+        query_rewriting = 1;
         break;
       default:
         help = 1;
