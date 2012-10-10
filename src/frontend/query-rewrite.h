@@ -81,6 +81,7 @@ typedef struct _fs_rule {
     fs_rule_bind exceptions[QUERY_REWRITE_MAX_CONS+1];
     unsigned char *id;
     int exec_flag;
+    int iterate_on_empty;
     unsigned int maxrec;
 } fs_rule;
 

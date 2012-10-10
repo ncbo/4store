@@ -12,7 +12,7 @@
 #include "../common/4s-hash.h"
 #include "../common/error.h"
 
-//#define DEBUG_RULES 1
+#define DEBUG_RULES 1
 
 static fs_rule_context gbl_rule_context;
 static GStaticMutex rule_init_mutex;
@@ -45,6 +45,9 @@ static const unsigned char *__new_cpy_str(const char *in_str);
 
 #define __SET_MAXREC(r,i) \
     gbl_rule_context.rules[r].maxrec = i;
+
+#define __SET_ITERATEONEMPTY(r,i) \
+    gbl_rule_context.rules[r].iterate_on_empty = i;
 
 #define __GET_RULE(i) (&(gbl_rule_context.rules[i]))
     
@@ -380,6 +383,7 @@ void __create_rule_subp(int rule_i) {
     __SET_ID(rule_i,__new_cpy_str("SUBP"));
     __SET_EXEC_FLAG(rule_i,0x0001);
     __SET_MAXREC(rule_i,3);
+    __SET_ITERATEONEMPTY(rule_i,1);
     __create_quads_rids(rule_i);
 }
 
@@ -388,14 +392,15 @@ void __create_rule_subc(int rule_i) {
     fs_rule_literal *b = __fs_rule_new_variable("__classB");
     fs_rule_literal *c = __fs_rule_new_variable("__classC");
 
-    fs_rule_literal *sc = __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subClassOf");
+    fs_rule_literal *sc = 
+        __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subClassOf");
 
     SET_TRIPLE_IN_RULE(rule_i,0,antecedents,a,sc,b);
     SET_TRIPLE_IN_RULE(rule_i,1,antecedents,b,sc,c);
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,a,sc,c);
     __SET_ID(rule_i,__new_cpy_str("SUBC"));
     __SET_EXEC_FLAG(rule_i,0x0002);
-    __SET_MAXREC(rule_i,5);
+    __SET_MAXREC(rule_i,30);
     __create_quads_rids(rule_i);
 }
 
@@ -404,7 +409,8 @@ void __create_rule_subp_transitive(int rule_i) {
     fs_rule_literal *b = __fs_rule_new_variable("__propB");
     fs_rule_literal *c = __fs_rule_new_variable("__propC");
 
-    fs_rule_literal *sp = __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
+    fs_rule_literal *sp = 
+        __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
 
     SET_TRIPLE_IN_RULE(rule_i,0,antecedents,a,sp,b);
     SET_TRIPLE_IN_RULE(rule_i,1,antecedents,b,sp,c);
@@ -412,6 +418,7 @@ void __create_rule_subp_transitive(int rule_i) {
     __SET_ID(rule_i,__new_cpy_str("SUBPT"));
     __SET_EXEC_FLAG(rule_i,0x0004);
     __SET_MAXREC(rule_i,5);
+    __SET_ITERATEONEMPTY(rule_i,0);
     __create_quads_rids(rule_i);
 }
 
@@ -429,6 +436,7 @@ void __create_rule_inverse(int rule_i) {
     __SET_ID(rule_i,__new_cpy_str("INV"));
     __SET_EXEC_FLAG(rule_i,0x0008);
     __SET_MAXREC(rule_i,1);
+    __SET_ITERATEONEMPTY(rule_i,0);
     __create_quads_rids(rule_i);
 }
 
@@ -766,7 +774,7 @@ int fs_rule_expand_bind_block_expand(fs_rule_query *rq,
         if (!(rule->exec_flag & rq->query->rule_flag))
             continue;
 
-        if (block->expanded && block->rule_id != i) {
+        if (block->expanded && block->rule_id != rule->exec_flag) {
             continue;
         }
         if (block->iteration < rule->maxrec) {
@@ -782,7 +790,7 @@ int fs_rule_expand_bind_block_expand(fs_rule_query *rq,
                 block->expanded = 1;
                 blocks_created++;
                 rq->blocks[b++] = newb;
-                newb->rule_id = i;
+                newb->rule_id = rule->exec_flag;
             }
             fs_free_rule(rule_copy);
         }
@@ -860,6 +868,10 @@ fs_rule_bind_block *fs_rule_bind_block_from_rule_input(fs_rule_input *ri) {
 
 fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
 
+#ifdef DEBUG_RULES
+    GTimer *tmr = g_timer_new();
+#endif
+
     fs_rid_vector *slot[4];
     for (int i=0;i<4; i++)
        slot[i] = fs_rid_vector_new(0);
@@ -868,7 +880,6 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
     int bind_comp[] = { FS_BIND_MODEL, FS_BIND_SUBJECT,
                      FS_BIND_PREDICATE, FS_BIND_OBJECT };
 
-    fs_binding *binding = NULL;
     int bind_cols=0;
     for (int q=0;q<4;q++) {
         if (bind->vars[q]) {
@@ -877,10 +888,6 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
         }
         if (bind->vrid_quad[q] && bind->vrid_quad[q]->length > 0)
             fs_rid_vector_append_vector(slot[q], bind->vrid_quad[q]);
-#ifdef DEBUG_RULES
-       fs_error(LOG_ERR,"slot[%d]",q); 
-       fs_rid_vector_print(slot[q],1,stdout);
-#endif
     }
 
     if (!tobind)
@@ -907,26 +914,32 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
     if (results) {
         len = results ? (results[0] ? results[0]->length : -1) : -2; 
     }
-    if (!len)
-        return NULL;
+    fs_binding *binding = NULL;
+    if (len) {
+        int r=0;
+        binding = fs_binding_new();
+        fs_binding_create(binding, "_ord", FS_RID_NULL, 0);
+        for (int q=0;q<4;q++) {
+            if (bind->vars[q] && results[r]) {
+                fs_binding_get(binding,bind->vars[q]);
+                fs_binding_add_vector(binding, bind->vars[q], results[r]);
+                r++;
+            }
+        }
+        if (results) {
+            for (int q=0;q<bind_cols;q++) {
+                if (results[q])
+                    fs_rid_vector_free(results[q]);
+            }
+            free(results);
 
-    int r=0;
-    binding = fs_binding_new();
-    fs_binding_create(binding, "_ord", FS_RID_NULL, 0);
-    for (int q=0;q<4;q++) {
-        if (bind->vars[q] && results[r]) {
-            fs_binding_get(binding,bind->vars[q]);
-            fs_binding_add_vector(binding, bind->vars[q], results[r]);
-            r++;
         }
     }
-    if (results) {
-        for (int q=0;q<bind_cols;q++) {
-            if (results[q])
-                fs_rid_vector_free(results[q]);
-        }
-        free(results);
-    }
+#ifdef DEBUG_RULES
+    //double elapse = g_timer_elapsed(tmr,NULL);
+    //fs_error(LOG_ERR,"fs_rule_bind_data_get elapse %.3f",elapse);
+    g_timer_destroy(tmr);
+#endif
     return binding;
 }
 
@@ -1049,6 +1062,10 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b) {
 }
 
 fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) {
+#ifdef DEBUG_RULES
+    GTimer *tmr = g_timer_new();
+#endif
+
    int bi=0;
    fs_binding *prev_binding=NULL;
    while(bi < QUERY_REWRITE_MAX_BIND_PER_BLOCK &&
@@ -1057,7 +1074,8 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
 
        if (prev_binding && !fs_binding_length(prev_binding)) {
            fs_binding_free(prev_binding);
-           return NULL;
+           prev_binding = NULL;
+           goto tr_exit_bd;
        }
 
        fs_binding *binding = fs_rule_bind_data_get(query, bind);
@@ -1065,7 +1083,8 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
             if (prev_binding) {
                 fs_binding_free(prev_binding);
             }
-            return NULL;
+            prev_binding = NULL;
+            goto tr_exit_bd;
        }
        if (!prev_binding) {
            prev_binding = binding;
@@ -1077,6 +1096,13 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
        }
        bi++;
    }
+
+tr_exit_bd: ;
+#ifdef DEBUG_RULES
+    double elapse = g_timer_elapsed(tmr,NULL);
+    fs_error(LOG_ERR,"fs_rule_bind_block_process %x elapse %.3f",rb->rule_id,elapse);
+    g_timer_destroy(tmr);
+#endif
    return prev_binding;
 }
 
@@ -1114,8 +1140,21 @@ fs_rule_query * fs_rule_create_query(fs_query *query, int block, fs_rule_input *
     }
    
     /* we skip postition 0 .. it is the query */
+    /* TODO: skip iterate should not hardcoded to just SUBC */
+    int skip_iterate = 0x0002;
+
+    int skip_flag = 0x0;
     for (int b=1; b < i; b++) {
-        fs_binding *binding = fs_rule_bind_block_process(query,rule_q->blocks[b]);
+        if (skip_flag & rule_q->blocks[b]->rule_id)
+            continue;
+
+        fs_binding *binding = 
+            fs_rule_bind_block_process(query,rule_q->blocks[b]);
+
+        if (!binding && (rule_q->blocks[b]->rule_id & skip_iterate)) {
+            skip_flag |= rule_q->blocks[b]->rule_id;
+        }
+
         if (binding && fs_binding_length(binding) > 0) {
             rule_q->count += fs_binding_length(binding);
             rule_q->blocks[b]->result_binding = binding;
@@ -1134,7 +1173,7 @@ int fs_rule_flags_from_string(const char *srules) {
         return 0;
 
     if (!strcmp(srules, "DEFAULT"))
-        return 0x0001; /* only subp */
+        return 0x0002; /* only subp */
     int flag = 0;
     if (strstr(srules,"SUBP"))
         flag |= 0x0001;
