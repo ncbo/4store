@@ -12,8 +12,7 @@
 #include "../common/4s-hash.h"
 #include "../common/error.h"
 
-#define DEBUG_RULES 0
-#define BIND_BACKWARD 1
+//#define DEBUG_RULES 0
 
 static fs_rule_context gbl_rule_context;
 static GStaticMutex rule_init_mutex;
@@ -1027,7 +1026,7 @@ static inline void fs_rule_merge_add_row(fs_binding *to, fs_binding *from, int r
 fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) {
 #ifdef DEBUG_RULES
     GTimer *tmr = g_timer_new();
-#if DEBUG_RULES > 1
+#if DEBUG_RULES > 2
     fs_error(LOG_ERR,"merge bind a");
     fs_binding_print(a,stdout);
     fs_error(LOG_ERR,"merge bind b");
@@ -1080,7 +1079,7 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) 
 #ifdef DEBUG_RULES
     *elapse = g_timer_elapsed(tmr,NULL);
     g_timer_destroy(tmr);
-#if DEBUG_RULES > 1
+#if DEBUG_RULES > 2
     fs_error(LOG_ERR,"merge bind result c in %.3f",*elapse);
     fs_binding_print(c,stdout);
 #endif 
@@ -1088,69 +1087,118 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) 
     return c;
 }
 
+int count_constants_in_bind(fs_rule_bind *bind) {
+    int c=0;
+    for (int i=0; i < 4; i++) {
+        if (bind->vrid_quad[i] &&
+                bind->vrid_quad[i]->length > 0) {
+            if (i == 2)
+                c += 5;
+            else if (i == 3)
+                c += 2;
+            else if (i == 1)
+                c += 2;
+            else if (i == 0)
+                c++;
+        }
+    }
+    return c++;
+}
+
+int get_bind_backwards(fs_rule_bind_block *rb) { 
+    fs_rule_bind *b_first = rb->binds[0];
+    int bi =QUERY_REWRITE_MAX_BIND_PER_BLOCK;
+    while(bi > 0 
+            &&  rb->binds[bi] == NULL)
+           bi--;
+
+    if (!bi)
+        return 0;
+
+    fs_rule_bind *b_last = rb->binds[bi];
+
+    return count_constants_in_bind(b_last) >
+             count_constants_in_bind(b_first) ? 1 : 0;         
+}
+
+fs_binding *fs_rule_bind_block_process_direction(fs_query *query,
+                                  fs_rule_bind_block *rb,
+                                  int bi,
+                                  fs_binding *prev_binding) {
+
+   fs_rule_bind *bind = rb->binds[bi];
+
+   if (prev_binding && !fs_binding_length(prev_binding)) {
+       fs_binding_free(prev_binding);
+       return NULL;
+   }
+
+   double elapse_bind_data;
+   fs_binding *binding = fs_rule_bind_data_get(query, bind, &elapse_bind_data);
+#ifdef DEBUG_RULES
+        rb->elapse_data_binds += elapse_bind_data;
+#endif
+   if (!binding) {
+        if (prev_binding)
+            fs_binding_free(prev_binding);
+        return NULL;
+   }
+   if (!prev_binding) {
+       prev_binding = binding;
+   } else {
+       double elapse_merge;
+       fs_binding *merged = fs_rule_binding_merge(prev_binding, binding, &elapse_merge); 
+#ifdef DEBUG_RULES
+        rb->elapse_merges += elapse_merge;
+#endif
+       fs_binding_free(binding);
+       if (prev_binding)
+           fs_binding_free(prev_binding);
+       prev_binding = merged;
+   }
+#if DEBUG_RULES > 0
+   if (prev_binding)
+        fs_error(LOG_ERR,"fs_rule_bind_block_process [%d] merged items %d",
+            bi, fs_binding_length(prev_binding));
+#endif
+    return prev_binding;
+}
+
+
 fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) {
 #ifdef DEBUG_RULES
     GTimer *tmr = g_timer_new();
 #endif
 
-#ifdef BIND_BACKWARD
-   int bi = QUERY_REWRITE_MAX_BIND_PER_BLOCK;
-   while(bi >= 0 &&  rb->binds[bi] == NULL)
-       bi--;
-   if (bi < 0)
-       goto tr_exit_bd;
-
-   fs_binding *prev_binding=NULL;
-   while(bi >= 0 && rb->binds[bi] != NULL) {
-#else
-   int bi = 0;
-   fs_binding *prev_binding=NULL;
-   while(bi < QUERY_REWRITE_MAX_BIND_PER_BLOCK &&
-         rb->binds[bi] != NULL) {
+   int bind_backwards = get_bind_backwards(rb);
+#ifdef DEBUG_RULES
+   fs_error(LOG_ERR,"bind_backwards %d",bind_backwards);
 #endif
-       fs_rule_bind *bind = rb->binds[bi];
+   fs_binding *prev_binding=NULL;
+   if (bind_backwards) {
+       int bi = QUERY_REWRITE_MAX_BIND_PER_BLOCK;
 
-       if (prev_binding && !fs_binding_length(prev_binding)) {
-           fs_binding_free(prev_binding);
-           prev_binding = NULL;
+       while(bi >= 0 &&  rb->binds[bi] == NULL)
+           bi--;
+       if (bi < 0)
            goto tr_exit_bd;
+       while(bi >= 0 && rb->binds[bi] != NULL) {
+           prev_binding = 
+               fs_rule_bind_block_process_direction(query,rb,bi,prev_binding);
+           if (!prev_binding)
+               goto tr_exit_bd;
+           bi--;
        }
-
-       double elapse_bind_data;
-       fs_binding *binding = fs_rule_bind_data_get(query, bind, &elapse_bind_data);
-#ifdef DEBUG_RULES
-            rb->elapse_data_binds += elapse_bind_data;
-#endif
-       if (!binding) {
-            if (prev_binding) {
-                fs_binding_free(prev_binding);
-            }
-            prev_binding = NULL;
-            goto tr_exit_bd;
+   } else {
+       int bi = 0;
+       while(bi < QUERY_REWRITE_MAX_BIND_PER_BLOCK &&
+             rb->binds[bi] != NULL) {
+           prev_binding = 
+               fs_rule_bind_block_process_direction(query,rb,bi,prev_binding);
+           if (!prev_binding)
+               goto tr_exit_bd;
+           bi++;
        }
-       if (!prev_binding) {
-           prev_binding = binding;
-       } else {
-           double elapse_merge;
-           fs_binding *merged = fs_rule_binding_merge(prev_binding, binding, &elapse_merge); 
-#ifdef DEBUG_RULES
-            rb->elapse_merges += elapse_merge;
-#endif
-           fs_binding_free(binding);
-           if (prev_binding)
-               fs_binding_free(prev_binding);
-           prev_binding = merged;
-       }
-#if DEBUG_RULES > 0
-       if (prev_binding)
-            fs_error(LOG_ERR,"fs_rule_bind_block_process [%d] merged items %d",
-                bi, fs_binding_length(prev_binding));
-#endif
-#ifdef BIND_BACKWARD
-       bi--;
-#else
-       bi++;
-#endif
    }
 
 tr_exit_bd: ;
@@ -1212,8 +1260,15 @@ fs_rule_query * fs_rule_create_query(fs_query *query, int block, fs_rule_input *
         fs_binding *binding = 
             fs_rule_bind_block_process(query,rule_q->blocks[b]);
 
-        if (!binding && (rule_q->blocks[b]->rule_id & skip_iterate)) {
+        if ((!binding || !fs_binding_length(binding))
+            && (rule_q->blocks[b]->rule_id & skip_iterate)) {
             skip_flag |= rule_q->blocks[b]->rule_id;
+#ifdef DEBUG_RULES
+            fs_error(LOG_ERR,"Next attempts to run rule %d will be skipped",
+                                rule_q->blocks[b]->rule_id);
+            fs_error(LOG_ERR,"cause %p %d",binding,
+                                binding ? fs_binding_length(binding) : -1);
+#endif
         }
 
         if (binding && fs_binding_length(binding) > 0) {
