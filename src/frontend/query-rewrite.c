@@ -12,7 +12,8 @@
 #include "../common/4s-hash.h"
 #include "../common/error.h"
 
-#define DEBUG_RULES 1
+#define DEBUG_RULES 0
+#define BIND_BACKWARD 1
 
 static fs_rule_context gbl_rule_context;
 static GStaticMutex rule_init_mutex;
@@ -382,7 +383,7 @@ void __create_rule_subp(int rule_i) {
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,x,p,y);
     __SET_ID(rule_i,__new_cpy_str("SUBP"));
     __SET_EXEC_FLAG(rule_i,0x0001);
-    __SET_MAXREC(rule_i,3);
+    __SET_MAXREC(rule_i,5);
     __SET_ITERATEONEMPTY(rule_i,1);
     __create_quads_rids(rule_i);
 }
@@ -400,7 +401,7 @@ void __create_rule_subc(int rule_i) {
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,a,sc,c);
     __SET_ID(rule_i,__new_cpy_str("SUBC"));
     __SET_EXEC_FLAG(rule_i,0x0002);
-    __SET_MAXREC(rule_i,30);
+    __SET_MAXREC(rule_i,35);
     __create_quads_rids(rule_i);
 }
 
@@ -621,7 +622,7 @@ int __fs_rule_translation_table_fill(
         else
             rule_bind->var = NULL;
     }
-#ifdef DEBUG_RULES
+#if DEBUG_RULES > 0
     ____fs_rule_translation_table_print(ttable);
 #endif
     return 1;
@@ -866,7 +867,7 @@ fs_rule_bind_block *fs_rule_bind_block_from_rule_input(fs_rule_input *ri) {
     return block;
 }
 
-fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
+fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind, double *elapse) {
 
 #ifdef DEBUG_RULES
     GTimer *tmr = g_timer_new();
@@ -888,10 +889,17 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
         }
         if (bind->vrid_quad[q] && bind->vrid_quad[q]->length > 0)
             fs_rid_vector_append_vector(slot[q], bind->vrid_quad[q]);
+#if DEBUG_RULES > 2
+        fs_error(LOG_ERR, "slot[%d]",q);
+        fs_rid_vector_print(slot[q],1,stdout);
+#endif
     }
 
-    if (!tobind)
-        return NULL;
+    fs_binding *binding = NULL;
+    int len = 0;
+    if (!tobind) {
+        goto tr_and_exit_bind;
+    }
 
     int all = 1;
     if (fs_rid_vector_length(slot[3]) > 0)
@@ -908,13 +916,12 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
     for (int i=0;i<4; i++)
         fs_rid_vector_free(slot[i]);
 
-    if (ret)
-        return NULL;
-    int len = 0;
+    if (ret) { 
+        goto tr_and_exit_bind;
+    }
     if (results) {
         len = results ? (results[0] ? results[0]->length : -1) : -2; 
     }
-    fs_binding *binding = NULL;
     if (len) {
         int r=0;
         binding = fs_binding_new();
@@ -935,10 +942,14 @@ fs_binding* fs_rule_bind_data_get(fs_query *query,fs_rule_bind *bind) {
 
         }
     }
+tr_and_exit_bind: ;
 #ifdef DEBUG_RULES
-    //double elapse = g_timer_elapsed(tmr,NULL);
-    //fs_error(LOG_ERR,"fs_rule_bind_data_get elapse %.3f",elapse);
+    *elapse = g_timer_elapsed(tmr,NULL);
     g_timer_destroy(tmr);
+#if DEBUG_RULES > 1
+    fs_error(LOG_ERR,"fs_rule_bind_data_get elapse %.3f binding %d",
+    *elapse,binding ? fs_binding_length(binding) : -1);
+#endif
 #endif
     return binding;
 }
@@ -1013,7 +1024,17 @@ static inline void fs_rule_merge_add_row(fs_binding *to, fs_binding *from, int r
    }
 }
 
-fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b) {
+fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) {
+#ifdef DEBUG_RULES
+    GTimer *tmr = g_timer_new();
+#if DEBUG_RULES > 1
+    fs_error(LOG_ERR,"merge bind a");
+    fs_binding_print(a,stdout);
+    fs_error(LOG_ERR,"merge bind b");
+    fs_binding_print(b,stdout);
+#endif 
+#endif
+
     int ax, bx;
     int match = fs_binding_set_equivalent_sort(a, b, &ax, &bx);
     if (!match)
@@ -1049,7 +1070,6 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b) {
                     fs_rule_merge_add_row(c,a,a->vals->data[va],mappinga,wa);
                     fs_rule_merge_add_row(c,b,b->vals->data[vb],mappingb,wb);
                     fs_rid_vector_append((c+1)->vals,arid);
-                    break;
                 } else if (brid > arid) {
                     break;
                 }
@@ -1057,7 +1077,14 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b) {
             }
         }
     }
-
+#ifdef DEBUG_RULES
+    *elapse = g_timer_elapsed(tmr,NULL);
+    g_timer_destroy(tmr);
+#if DEBUG_RULES > 1
+    fs_error(LOG_ERR,"merge bind result c in %.3f",*elapse);
+    fs_binding_print(c,stdout);
+#endif 
+#endif 
     return c;
 }
 
@@ -1066,10 +1093,21 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
     GTimer *tmr = g_timer_new();
 #endif
 
-   int bi=0;
+#ifdef BIND_BACKWARD
+   int bi = QUERY_REWRITE_MAX_BIND_PER_BLOCK;
+   while(bi >= 0 &&  rb->binds[bi] == NULL)
+       bi--;
+   if (bi < 0)
+       goto tr_exit_bd;
+
+   fs_binding *prev_binding=NULL;
+   while(bi >= 0 && rb->binds[bi] != NULL) {
+#else
+   int bi = 0;
    fs_binding *prev_binding=NULL;
    while(bi < QUERY_REWRITE_MAX_BIND_PER_BLOCK &&
-            rb->binds[bi] != NULL) {
+         rb->binds[bi] != NULL) {
+#endif
        fs_rule_bind *bind = rb->binds[bi];
 
        if (prev_binding && !fs_binding_length(prev_binding)) {
@@ -1078,7 +1116,11 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
            goto tr_exit_bd;
        }
 
-       fs_binding *binding = fs_rule_bind_data_get(query, bind);
+       double elapse_bind_data;
+       fs_binding *binding = fs_rule_bind_data_get(query, bind, &elapse_bind_data);
+#ifdef DEBUG_RULES
+            rb->elapse_data_binds += elapse_bind_data;
+#endif
        if (!binding) {
             if (prev_binding) {
                 fs_binding_free(prev_binding);
@@ -1089,19 +1131,36 @@ fs_binding *fs_rule_bind_block_process(fs_query *query, fs_rule_bind_block *rb) 
        if (!prev_binding) {
            prev_binding = binding;
        } else {
-           fs_binding *merged = fs_rule_binding_merge(prev_binding, binding); 
+           double elapse_merge;
+           fs_binding *merged = fs_rule_binding_merge(prev_binding, binding, &elapse_merge); 
+#ifdef DEBUG_RULES
+            rb->elapse_merges += elapse_merge;
+#endif
            fs_binding_free(binding);
-           fs_binding_free(prev_binding);
+           if (prev_binding)
+               fs_binding_free(prev_binding);
            prev_binding = merged;
        }
+#if DEBUG_RULES > 0
+       if (prev_binding)
+            fs_error(LOG_ERR,"fs_rule_bind_block_process [%d] merged items %d",
+                bi, fs_binding_length(prev_binding));
+#endif
+#ifdef BIND_BACKWARD
+       bi--;
+#else
        bi++;
+#endif
    }
 
 tr_exit_bd: ;
 #ifdef DEBUG_RULES
     double elapse = g_timer_elapsed(tmr,NULL);
-    fs_error(LOG_ERR,"fs_rule_bind_block_process %x elapse %.3f",rb->rule_id,elapse);
+    rb->elapse_total = elapse;
     g_timer_destroy(tmr);
+    fs_error(LOG_ERR,"fs_rule_bind_block_process rule_id[%x] elapse (%.3f,%.3f,%.3f)",
+                      rb->rule_id,
+                      rb->elapse_merges,rb->elapse_data_binds,rb->elapse_total);
 #endif
    return prev_binding;
 }
@@ -1147,7 +1206,9 @@ fs_rule_query * fs_rule_create_query(fs_query *query, int block, fs_rule_input *
     for (int b=1; b < i; b++) {
         if (skip_flag & rule_q->blocks[b]->rule_id)
             continue;
-
+#if DEBUG_RULES > 0
+        fs_error(LOG_ERR,"Executing bind for block %d",b);
+#endif
         fs_binding *binding = 
             fs_rule_bind_block_process(query,rule_q->blocks[b]);
 
@@ -1173,7 +1234,7 @@ int fs_rule_flags_from_string(const char *srules) {
         return 0;
 
     if (!strcmp(srules, "DEFAULT"))
-        return 0x0002; /* only subp */
+        return 0x0001; /* only subp */
     int flag = 0;
     if (strstr(srules,"SUBP"))
         flag |= 0x0001;

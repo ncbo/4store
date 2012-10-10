@@ -64,6 +64,12 @@ typedef struct __rule_triple_list {
     int expanded;
     int iteration;
     int rule_id;
+
+    /* profiling */
+    double elapse_data_binds;
+    double elapse_merges;
+    double elapse_total;
+
 } fs_rule_bind_block;
 
 typedef struct _fs_rule_query {
