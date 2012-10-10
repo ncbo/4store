@@ -1131,7 +1131,6 @@ static void http_get_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
     if (!ctxt->rules && query_rewriting) {
       ctxt->rules = g_strdup("DEFAULT");
     }
-
     if (graph_access_control && !ctxt->apikey) {
         http_error(ctxt, "403 forbidden - apikey parameter has to be included in request.");
         http_close(ctxt);
@@ -1268,8 +1267,15 @@ static void http_post_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
       } else if (!strcmp(key, "apikey") && value) {
         url_decode(value);
         ctxt->apikey = g_strdup(value);
+      } else if (query_rewriting && 
+                 !strcmp(key, "rules") && value) {
+          url_decode(value);
+          ctxt->rules = g_strdup(value);
       }
       qs = next;
+    }
+    if (!ctxt->rules && query_rewriting) {
+      ctxt->rules = g_strdup("DEFAULT");
     }
     if (graph_access_control && !ctxt->apikey) {
         http_error(ctxt, "403 forbidden - apikey parameter has to be included in request.");
