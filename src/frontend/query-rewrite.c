@@ -370,15 +370,21 @@ void __create_rule_subp(int rule_i) {
 
     fs_rule_literal *none = __fs_rule_new_variable("none");
 
-    fs_rule_literal *sp = __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
-    fs_rule_literal *sc = __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subClassOf");
-    fs_rule_literal *eq = __fs_rule_new_constant("http://www.w3.org/2002/07/owl#equivalentClass");
+    fs_rule_literal *type = 
+        __fs_rule_new_constant("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+    fs_rule_literal *sp = 
+        __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subPropertyOf");
+    fs_rule_literal *sc = 
+        __fs_rule_new_constant("http://www.w3.org/2000/01/rdf-schema#subClassOf");
+    fs_rule_literal *eq = 
+        __fs_rule_new_constant("http://www.w3.org/2002/07/owl#equivalentClass");
 
     SET_TRIPLE_IN_RULE(rule_i,0,antecedents,x,pp,y);
     SET_TRIPLE_IN_RULE(rule_i,1,antecedents,pp,sp,p);
-    SET_TRIPLE_IN_RULE(rule_i,0,exceptions,none,sp,none);
-    SET_TRIPLE_IN_RULE(rule_i,1,exceptions,none,sc,none);
-    SET_TRIPLE_IN_RULE(rule_i,2,exceptions,none,eq,none);
+    SET_TRIPLE_IN_RULE(rule_i,0,exceptions,none,type,none);
+    SET_TRIPLE_IN_RULE(rule_i,1,exceptions,none,sp,none);
+    SET_TRIPLE_IN_RULE(rule_i,2,exceptions,none,sc,none);
+    SET_TRIPLE_IN_RULE(rule_i,3,exceptions,none,eq,none);
     SET_TRIPLE_IN_RULE(rule_i,0,consequents,x,p,y);
     __SET_ID(rule_i,__new_cpy_str("SUBP"));
     __SET_EXEC_FLAG(rule_i,0x0001);
