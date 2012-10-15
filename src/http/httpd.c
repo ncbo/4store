@@ -104,7 +104,6 @@ static void fs_free_global_elements() {
 static void query_log_open (const char *kb_name)
 {
   char *filename = g_strdup_printf("/var/log/4store/query-%s.log", kb_name);
-
   ql_file= fopen(filename, "a");
   if (ql_file) {
     fprintf(ql_file, "\n# 4s-httpd for KB=%s, pid=%d #####\n", kb_name, getpid());
@@ -137,10 +136,10 @@ static void query_log (client_ctxt *ctxt, const char *query)
     char time_str[21];
     strftime(time_str, sizeof(time_str), "%Y-%m-%dT%H:%M:%SZ", ts);
     if (!ctxt->apikey)
-      fprintf(ql_file, "##### %s Q%u-pid%u\n%s\n", time_str, ctxt->query_id, cpid, query);
+      fprintf(ql_file, "##### %s Q%u-pid%u %s\n%s\n", time_str, ctxt->query_id, getpid(), ctxt->rules ? ctxt->rules : "NONE", query);
     else
       fprintf(ql_file, "##### %s Q%u-pid%u %s %s\n%s\n",
-            time_str, ctxt->query_id, cpid, ctxt->apikey, ctxt->rules, query);
+            time_str, ctxt->query_id, getpid(), ctxt->apikey, ctxt->rules ? ctxt->rules : "NONE", query);
     fflush(ql_file);
   }
 }
@@ -438,9 +437,9 @@ static void http_query_worker(gpointer data, gpointer user_data)
   if (ql_file) {
     if (rows_returned > -1) {
       fprintf(ql_file, "#### execution time for Q%u-pid%u: %fs, returned %d rows.\n", ctxt->query_id,
-          cpid, fs_time() - ctxt->start_time, rows_returned);
+          getpid(), fs_time() - ctxt->start_time, rows_returned);
     } else {
-      fprintf(ql_file, "#### execution time for Q%u-pid%u: %fs\n", ctxt->query_id, cpid, fs_time() - ctxt->start_time);
+      fprintf(ql_file, "#### execution time for Q%u-pid%u: %fs\n", ctxt->query_id, getpid(), fs_time() - ctxt->start_time);
     }
 
     fflush(ql_file);
