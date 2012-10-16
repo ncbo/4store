@@ -37,7 +37,7 @@
 #include "../common/rdf-constants.h"
 #include "../common/4s-internals.h"
 
-#define CACHE_SIZE 65536
+#define CACHE_SIZE 65536 * 4
 #define CACHE_MASK (CACHE_SIZE-1)
 
 #define RESOURCE_LOOKUP_BUFFER 1800
@@ -414,10 +414,10 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
                                      fs_expression_eval(q, row, block, e->arg2));
 
     case RASQAL_EXPR_GE:
-        return fn_greater_than_equal(q, 
+        return fn_greater_than_equal(q,
                 fs_expression_eval(q, row, block, e->arg1),
                 fs_expression_eval(q, row, block, e->arg2));
-    
+
     case RASQAL_EXPR_UMINUS:
         return fn_minus(q, fs_expression_eval(q, row, block, e->arg1));
 
@@ -538,7 +538,7 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
                   v.rid == FS_RID_NULL)) {
                /* do nothing */
             } else {
-                if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) { 
+                if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) {
                     if (v.rid != rid_prev) {
                         count++;
                         rid_prev = v.rid;
@@ -754,7 +754,7 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
                 rr = q->group_rows[r];
             if (q->apply_constraints && !fs_bit_array_get(q->apply_constraints,rr)) continue;
             fs_value expr = fs_expression_eval(q, rr, block, e->arg1);
-            if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) { 
+            if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) {
                 if (expr.rid != rid_prev) {
                     rid_prev = expr.rid;
                 } else
@@ -779,7 +779,7 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
                 rr = q->group_rows[r];
             if (q->apply_constraints && !fs_bit_array_get(q->apply_constraints,rr)) continue;
             fs_value expr = fs_expression_eval(q, rr, block, e->arg1);
-            if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) { 
+            if (e->flags & RASQAL_EXPR_FLAG_DISTINCT) {
                 if (expr.rid != rid_prev) {
                     rid_prev = expr.rid;
                 } else
@@ -927,7 +927,7 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
             e->literal->type == RASQAL_LITERAL_VARIABLE &&
             e->literal->value.variable->expression)
             return fs_expression_eval(q,row,block,
-                    e->literal->value.variable->expression); 
+                    e->literal->value.variable->expression);
         return literal_to_value(q, row, block, e->literal);
     }
 
@@ -961,7 +961,7 @@ static int resolve_precache_all(fsp_link *l, fs_rid_vector *rv[], int segments)
             if (res[s][i].rid == FS_RID_NULL) break;
             if (g_hash_table_lookup(res_l1_cache, &(res[s][i].rid))) {
                 free(res[s][i].lex);
-   
+
                 continue;
             }
             fs_rid *trid = malloc(sizeof(fs_rid));
@@ -1155,7 +1155,7 @@ static raptor_term *slot_fill(fs_query *q, rasqal_literal *l, fs_row *row)
                 tag = (unsigned char *)b->lang;
             }
             return raptor_new_term_from_literal(q->qs->raptor_world, (unsigned char *)b->lex, dt, tag);
-        } 
+        }
     }
 
     /* this should never happen */
@@ -2514,7 +2514,7 @@ static void prefetch_lexical_data(fs_query *q, long int next_row,const int rows)
     /* ms8: aggregates prefetch everything in one go */
     if (q->aggregate > 2)
         return;
-    if (q->aggregate) q->aggregate = 3; 
+    if (q->aggregate) q->aggregate = 3;
 
     for (int i=0; i<q->segments; i++) {
         fs_rid_vector_clear(q->pending[i]);
@@ -2552,7 +2552,7 @@ static void prefetch_lexical_data(fs_query *q, long int next_row,const int rows)
             }
             if (FS_IS_BNODE(rid)) continue;
             if (res_l2_cache[rid & CACHE_MASK].rid == rid) {
-                cache_l2_hit++; 
+                cache_l2_hit++;
                 continue;
             }
             pre_cache_len++;
@@ -2673,7 +2673,7 @@ nextrow: ;
                         fs_rid_vector_append(grows, ord->data[next_row]);
                     next_row++;
                 }
-                if (q->offset_aggregate > 0 && !q->order) { 
+                if (q->offset_aggregate > 0 && !q->order) {
                     q->offset_aggregate--;
                     next_row++;
                     goto nextgroup;
@@ -2754,7 +2754,7 @@ nextrow: ;
             }
         } else if (q->aggregate) {
             q->row = next_row;
-        }    
+        }
     }
 
     int repeat_row = 1;
@@ -2780,12 +2780,12 @@ nextrow: ;
                     goto nextrow;
                 }
             }
-            
+
             if (!q->group_by) {
                 if (q->aggregate && (row_agg+1) < q->length) {
                     row_agg++;
                     goto consnext;
-                } else { 
+                } else {
                     val = fs_expression_eval(q, row, 0, q->bt[i+1].expression);
                 }
             }
@@ -2864,7 +2864,7 @@ nextrow: ;
     if (q->aggregate_order) {
         fs_row *copy = fs_row_copy(q->resrow, q->num_vars);
         g_ptr_array_add(q->agg_rows,copy);
-        goto nextrow; 
+        goto nextrow;
     }
     return q->resrow;
 }
