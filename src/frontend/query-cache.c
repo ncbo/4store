@@ -36,7 +36,7 @@
 #include "../common/4s-internals.h"
 #include "../common/rdf-constants.h"
 
-#define CACHE_SIZE 1024
+#define CACHE_SIZE 1024 * 8
 
 struct _fs_bind_cache {
     int filled;     /* true if cache entry is in use */
@@ -88,7 +88,7 @@ static int is_admin(fs_rid_set *admins, fs_rid user_rid) {
   /* if no admin users then all users are admins */
   if (!admins)
     return 1;
-  return fs_rid_set_contains(admins,user_rid); 
+  return fs_rid_set_contains(admins,user_rid);
 }
 
 /**
@@ -111,9 +111,9 @@ static fs_rid_set *no_access_for_user(fs_acl_system_info *acl_info, fs_rid user_
 }
 
 /**
-* It discards graph rows that are not accesible by the query user 
+* It discards graph rows that are not accesible by the query user
 * m is the models (column 0) result of the bind
-* inv_acl is the set of graphs that the query cannot access 
+* inv_acl is the set of graphs that the query cannot access
 * discarded returns a bit_array by reference with 0's in not accesible rows
 */
 int fs_mark_discard_rows(fs_rid_vector *m, fs_rid_set *inv_acl, unsigned char **discarded) {
@@ -132,7 +132,7 @@ int fs_mark_discard_rows(fs_rid_vector *m, fs_rid_set *inv_acl, unsigned char **
             }
         }
       }
-    
+
      if (allow_access)
         *discarded = allow_access;
 
@@ -140,7 +140,7 @@ int fs_mark_discard_rows(fs_rid_vector *m, fs_rid_set *inv_acl, unsigned char **
 }
 
 /**
-* aux functions to destroy keys and values in 
+* aux functions to destroy keys and values in
 * acl_graph_hash
 */
 static void acl_key_destroyed(gpointer pdata) {
@@ -153,12 +153,12 @@ static void acl_value_destroyed(gpointer pdata) {
 }
 
 /**
-* It loads the acl system info from the system:config graph. 
+* It loads the acl system info from the system:config graph.
 * Due to link->acl_system_info manipulation this function should be
 * under mutex conditions.
 */
 int fs_acl_load_system_info(fsp_link *link) {
-    
+
     if (!fsp_acl_needs_reload(link))
         return 0;
 
@@ -190,7 +190,7 @@ int fs_acl_load_system_info(fsp_link *link) {
             acl_system_info->admin_user_set = NULL;
         }
         acl_system_info->admin_user_set = fs_rid_set_new();
-        
+
 
         for (int row = 0; row < result[0]->length; row++) {
             if(result[1]->data[row] == fs_c.fs_acl_access_by) {
@@ -381,7 +381,7 @@ int fs_bind_cache_wrapper_intl_acl(fs_query_state *qs, fs_query *q, int all,
     if (fsp_is_acl_enabled(qs->link) && (*result)) {
         unsigned char *rows_discarded = NULL;
         /* TODO probably this can be done with one iteration of results */
-        fs_rid_set *inv_acl = no_access_for_user(qs->link->acl_system_info,q->apikey_rid); 
+        fs_rid_set *inv_acl = no_access_for_user(qs->link->acl_system_info,q->apikey_rid);
         ndiscarded = fs_mark_discard_rows((*result)[0], inv_acl, &rows_discarded);
         if (inv_acl)
             fs_rid_set_free(inv_acl);
@@ -416,7 +416,7 @@ int fs_bind_cache_wrapper_intl_acl(fs_query_state *qs, fs_query *q, int all,
 }
 
 /*
-* A wrapper to go via the ACL graph control 
+* A wrapper to go via the ACL graph control
 */
 int fs_bind_cache_wrapper(fs_query_state *qs, fs_query *q, int all,
                 int flags, fs_rid_vector *rids[4],
@@ -463,7 +463,7 @@ int fs_query_cache_flush(fs_query_state *qs, int verbosity)
     }
 
     g_static_mutex_unlock(&qs->cache_mutex);
-    
+
     return 0;
 }
 
