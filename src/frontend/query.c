@@ -823,8 +823,16 @@ int fs_query_process_pattern(fs_query *q, rasqal_graph_pattern *pattern,
             }
             int ret;
             if (chunk == 1) {
-                q->triple_index = j;
                 ret = fs_handle_query_triple(q, i, q->blocks[i].data[j]);
+                int col_opt_pag = fs_trigger_pagination_opt(q,j);
+                if (col_opt_pag) {
+                    void *ptmp = q->bt;
+                    q->bt = q->bb[i];
+                    q->length = fs_binding_length(q->bb[i]);
+                    fs_query_order(q);
+                    q->length = 0;
+                    q->bt = ptmp;
+                }
             } else {
                 rasqal_triple *in[chunk];
                 for (int k=0; k<chunk; k++) {
@@ -1841,6 +1849,11 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
             return 0;
         }
 
+        int limit = q->order ? -1 : q->soft_limit;
+        if (q->ordering && q->limit) {
+            fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
+            limit = q->limit;
+        }
         fs_bind_cache_wrapper(q->qs, q, 0, tobind | FS_BIND_BY_SUBJECT,
                  slot, &results, -1, q->order ? -1 : q->soft_limit);
 
@@ -1897,7 +1910,11 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
         }
 
         char *scope = NULL;
-
+        int limit = q->order ? -1 : q->soft_limit;
+        if (q->ordering && q->limit) {
+            fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
+            limit = q->limit;
+        }
         fs_bind_cache_wrapper(q->qs, q, 1, tobind | FS_BIND_BY_OBJECT,
                  slot, &results, -1, q->order ? -1 : q->soft_limit);
 
@@ -1950,7 +1967,11 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
 
         return 0;
     }
-
+    int limit = q->order ? -1 : q->soft_limit;
+    if (q->ordering && q->limit) {
+        fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
+        limit = q->limit;
+    }
     fs_bind_cache_wrapper(q->qs, q, 1, tobind | FS_BIND_BY_SUBJECT,
              slot, &results, -1, q->order ? -1 : q->soft_limit);
 

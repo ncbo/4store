@@ -581,6 +581,68 @@ void foreach_freq_one(gpointer key, gpointer value, gpointer user_data)
     printf("   (%s %s) -> %lld\n", p, s, f->freq);
 }
 
+int fs_trigger_pagination_opt(fs_query *q,int j) {
+    if (j > 0)
+        return 0;
+    if (q->limit < 0)
+        return 0;
+    if (q->block == 1 && q->blocks[0].length == 2) {
+        int conditions;
+        for (conditions = 0; rasqal_query_get_order_condition(q->rq, conditions);
+            conditions++);
+        if (conditions == 1) {
+            rasqal_expression *oe = rasqal_query_get_order_condition(q->rq,0);
+            if ((oe->op == RASQAL_EXPR_ORDER_COND_ASC ||
+                oe->op == RASQAL_EXPR_ORDER_COND_DESC) &&
+                oe->arg1->op == RASQAL_EXPR_LITERAL &&
+                oe->arg1->literal->type == RASQAL_LITERAL_VARIABLE) {
+                long int col = (long int)oe->arg1->literal->value.variable->user_data;
+                if (col == 0) {
+                    fs_error(LOG_CRIT, "fs_optimiser_freq_print missing column");
+                    return 0;
+                }
+                fs_binding *bb = q->bb[0];
+                int optcol=0;
+                while(bb[optcol].name) {
+                    if(bb[optcol].bound && (
+                        !strcmp((const char *)oe->arg1->literal->value.variable->name,
+                               (const char *)bb[optcol].name)))
+                        return optcol;
+                    optcol++;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+void fs_optimize_pagination(fs_rid_vector **slot,int slot_sort, int *ordering, int len) {
+    fs_rid_vector *opt_slot[4];
+    for (int i=0;i<4;i++) {
+        if (slot_sort == i)
+            opt_slot[i] = fs_rid_vector_new(fs_rid_vector_length(slot[i]));
+        else
+            opt_slot[i] = fs_rid_vector_new(0);
+    }   
+    int i=0;
+    /* we build a conjuctive bind that will be limited to opt future joins
+       conjuctive avoids sorting in backend-query and ORDER BY can be performed sooner */
+    while(i<len) {
+        for (int j=0;j<4;j++) {
+            if (j != slot_sort && fs_rid_vector_length(slot[j]) > 0) {
+                fs_rid_vector_append(opt_slot[j],slot[j]->data[0]);
+            } else if (j == slot_sort) {
+                opt_slot[j]->data[i] = slot[j]->data[ordering[i]];
+            }   
+        }   
+        i++;
+    }   
+    for (int i=0;i<4;i++) {
+        fs_rid_vector_free(slot[i]);
+        slot[i] = opt_slot[i];
+    }   
+}
+
 void fs_optimiser_freq_print(fs_query_state *qs)
 {
     if (!qs->freq_s) {

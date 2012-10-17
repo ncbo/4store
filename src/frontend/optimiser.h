@@ -21,6 +21,10 @@ int fs_bind_freq(fs_query_state *qs, fs_query *q, int block, rasqal_triple *t);
 /* dump the contents of the quad frequency cache to stdout */
 void fs_optimiser_freq_print(fs_query_state *qs);
 
+/* detects pagination opt */
+int fs_trigger_pagination_opt(fs_query *q,int j);
+void fs_optimize_pagination(fs_rid_vector **slot,int slot_sort, int *ordering, int len);
+
 /* vi:set expandtab sts=4 sw=4: */
 
 #endif

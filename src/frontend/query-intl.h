@@ -85,7 +85,6 @@ struct _fs_query {
     int agg_index;
     fs_row *resrow;
     fs_p_vector blocks[FS_MAX_BLOCKS];
-    int triple_index;
     fs_join_type join_type[FS_MAX_BLOCKS];
     int parent_block[FS_MAX_BLOCKS];
     int union_group[FS_MAX_BLOCKS];
