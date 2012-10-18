@@ -1910,7 +1910,7 @@ static void output_sparql(fs_query *q, int flags, FILE *out)
     } else {
 	/* XML output */
 
-	fprintf(out, "<?xml version=\"1.0\"?>\n"
+	fprintf(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 		"<sparql xmlns=\"http://www.w3.org/2005/sparql-results#\">\n");
 	row = fs_query_fetch_header_row(q);
 	fprintf(out, "  <head>\n");
