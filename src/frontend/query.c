@@ -1801,7 +1801,6 @@ static int process_results(fs_query *q, int block, fs_binding *oldb,
 
 static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
 {
-
     fs_rid_vector *slot[4];
     slot[0] = fs_rid_vector_new(0);
     slot[1] = fs_rid_vector_new(0);
@@ -1855,7 +1854,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
             limit = q->limit;
         }
         fs_bind_cache_wrapper(q->qs, q, 0, tobind | FS_BIND_BY_SUBJECT,
-                 slot, &results, -1, q->order ? -1 : q->soft_limit);
+                 slot, &results, -1, limit);
 
         int rules_count = 0;
         if (q->rule_flag) {
@@ -1916,7 +1915,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
             limit = q->limit;
         }
         fs_bind_cache_wrapper(q->qs, q, 1, tobind | FS_BIND_BY_OBJECT,
-                 slot, &results, -1, q->order ? -1 : q->soft_limit);
+                 slot, &results, -1, limit);
 
         int rules_count = 0;
         if (q->rule_flag) {
@@ -1967,11 +1966,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
 
         return 0;
     }
-    int limit = q->order ? -1 : q->soft_limit;
-    if (q->ordering && q->limit) {
-        fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
-        limit = q->limit;
-    }
+
     fs_bind_cache_wrapper(q->qs, q, 1, tobind | FS_BIND_BY_SUBJECT,
              slot, &results, -1, q->order ? -1 : q->soft_limit);
 
