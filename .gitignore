@@ -33,3 +33,8 @@ build
 root
 tags
 TAGS
+*.swp
+
+tests/httpd-extras/4s-query
+
+tests/httpd-extras/4s-query
