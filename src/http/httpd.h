@@ -49,4 +49,5 @@ typedef struct {
   double start_time;
   char *apikey;
   char *rules;
+  char *json_function;
 } client_ctxt;

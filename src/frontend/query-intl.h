@@ -113,6 +113,7 @@ struct _fs_query {
     int group_by;
     GHashTable *tmp_resources;
     int rule_flag;
+    char *json_function;		/* function for JSON-P callbacks */
 };
 
 #endif

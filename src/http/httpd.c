@@ -355,6 +355,7 @@ static void http_query_worker(gpointer data, gpointer user_data)
   ctxt->qr = fs_query_execute(query_state, fsplink, bu, ctxt->query_string,
                               ctxt->query_flags, opt_level, ctxt->soft_limit,
                               ctxt->apikey,ctxt->rules, 0);
+  ctxt->qr->json_function = ctxt->json_function;
   if (ctxt->qr->errors) {
     http_error(ctxt, "400 Parser error");
     GSList *w = ctxt->qr->warnings;
@@ -1065,6 +1066,11 @@ static void http_query_widget(client_ctxt *ctxt)
    "\nSELECT * WHERE {\n ?s ?p ?o\n} LIMIT 10\n"
    "</textarea><br>\n"
    "<em>Soft limit</em> <input type=\"text\" name=\"soft-limit\">\n"
+   "<select name=\"output\">\n"
+   "<option>xml</option>\n"   
+   "<option>json</option>\n"
+   "<option>text</option>\n"
+   "</select>\n"
    "<input type=\"submit\" value=\"Execute\"><input type=\"reset\">\n"
    "</form>\n");
 
@@ -1124,6 +1130,9 @@ static void http_get_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
                  !strcmp(key, "rules") && value) {
           url_decode(value);
           ctxt->rules = g_strdup(value);
+      } else if (!strcmp(key, "callback") && value) {
+        url_decode(value);
+        ctxt->json_function = g_strdup(value);
       }
       qs = next;
     }
@@ -1270,6 +1279,9 @@ static void http_post_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
                  !strcmp(key, "rules") && value) {
           url_decode(value);
           ctxt->rules = g_strdup(value);
+      } else if (!strcmp(key, "callback") && value) {
+        url_decode(value);
+        ctxt->json_function = g_strdup(value);
       }
       qs = next;
     }
