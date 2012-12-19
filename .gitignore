@@ -38,3 +38,7 @@ TAGS
 tests/httpd-extras/4s-query
 
 tests/httpd-extras/4s-query
+
+fix_pkg_route.sh
+
+old_autogen.sh
