@@ -195,9 +195,10 @@ void fs_hash_freshen()
 
 void fs_hash_fini()
 {
-    g_hash_table_destroy(bnids);
-    bnids = NULL;
-
+    if (bnids) {
+        g_hash_table_destroy(bnids);
+        bnids = NULL;
+    }
     if (umac_data) {
 	umac_delete(umac_data);
 	umac_data = NULL;
