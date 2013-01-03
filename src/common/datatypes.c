@@ -298,7 +298,7 @@ void fs_rid_vector_grow(fs_rid_vector *rv, int32_t length)
     if (!rv) return;
 
     if (length > rv->size) {
-	rv->data = realloc(rv->data, sizeof(fs_rid *) * length);
+	rv->data = realloc(rv->data, sizeof(fs_rid) * length);
 	rv->size = length;
     }
 
