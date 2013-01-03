@@ -20,6 +20,13 @@ if test "X$PKG_CONFIG" = X; then
 	AC_MSG_ERROR([Cannot find pkg-config, you need this to build])
 fi
 
+PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], have_check="yes", have_check="no")
+if test $have_check = yes; then
+AC_SUBST(CHECK_SUBDIR, "check")
+else
+AC_SUBST(CHECK_SUBDIR, "")
+fi
+
 AC_ARG_WITH([storage_path],
 	[AS_HELP_STRING([--with-storage-path=PATH],
 	                [set directory used to store indexes default=/var/lib/4store])],
@@ -209,6 +216,8 @@ LIBS=$oLIBS
 AC_CONFIG_FILES([Makefile
                  man/Makefile
                  tests/Makefile
+                 tests/check/Makefile
+                 tests/check/common/Makefile
                  src/Makefile
                  src/backend/Makefile
                  src/common/Makefile
@@ -241,3 +250,10 @@ if test $have_ossp_uuid = yes; then echo "   Using OSSP-style libuuid"; fi
 if test $have_bsd_uuid = yes; then echo "   Using BSD-style libuuid"; fi
 echo "   Using Raptor version $raptor_version"
 echo "   Using Rasqal version $rasqal_version"
+
+if test $have_check = yes; then
+    check_version=`$PKG_CONFIG check --modversion 2>/dev/null`
+    echo "   Using 'Check' testing framework $check_version";
+else
+    echo "   OPTIONAL: Install http://check.sourceforge.net to run unit tests.";
+fi

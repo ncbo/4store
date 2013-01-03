@@ -1,3 +1,5 @@
+SUBDIRS = @CHECK_SUBDIR@
+
 all:
 
 test: test-query test-httpd test-httpd-extras
