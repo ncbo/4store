@@ -148,12 +148,11 @@ void fs_rid_vector_append_vector_no_nulls_lit(fs_rid_vector *v, fs_rid_vector *v
 fs_rid_vector *fs_rid_vector_copy(fs_rid_vector *v);
 void fs_rid_vector_clear(fs_rid_vector *v);
 void fs_rid_vector_print(fs_rid_vector *v, int flags, FILE *out);
-void fs_rid_vector_array_sort(fs_rid_vector **v, int count, int left, int right);
 void fs_rid_vector_sort(fs_rid_vector *v);
 void fs_rid_vector_uniq(fs_rid_vector *v, int remove_null);
 int fs_rid_vector_contains(fs_rid_vector *v, fs_rid r);
 char *fs_rid_vector_to_string(fs_rid_vector *v);
-fs_rid_vector *fs_rid_vector_intersect(int count, const fs_rid_vector *rv[]);
+
 void fs_rid_vector_truncate(fs_rid_vector *rv, int32_t length);
 void fs_rid_vector_grow(fs_rid_vector *rv, int32_t length);
 void fs_rid_vector_free(fs_rid_vector *t);
@@ -177,7 +176,8 @@ fs_rid fs_rid_set_next(fs_rid_set *s);
 void fs_rid_set_print(fs_rid_set *s);
 void fs_rid_set_free(fs_rid_set *s);
  
-double fs_time(void); 
+
+double fs_time(void);
 
 int fs_resource_cmp(const void *va, const void *vb);
 

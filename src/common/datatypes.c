@@ -228,16 +228,6 @@ static int rid_partition(fs_rid_vector **v, int count, int left, int right)
     return store;
 }
 
-/* inplace quicksort on an array of rid_vectors */
-void fs_rid_vector_array_sort(fs_rid_vector **v, int count, int left, int right)
-{
-    if (right > left) {
-	int pivot = rid_partition(v, count, left, right);
-	fs_rid_vector_array_sort(v, count, left, pivot-1);
-	fs_rid_vector_array_sort(v, count, pivot+1, right);
-    }
-}
-
 static int rid_compare(const void *va, const void *vb)
 {
     /* these have to be signed to avoid a conflict with the way mysql aggregate
@@ -292,19 +282,6 @@ static int inter_sub(int count, int pos, const fs_rid_vector *rv[], fs_rid val)
     if (!found) return 0;
 
     return inter_sub(count, pos+1, rv, val);
-}
-
-fs_rid_vector *fs_rid_vector_intersect(int count, const fs_rid_vector *rv[])
-{
-    fs_rid_vector *ret = fs_rid_vector_new(0);
-
-    for (int i=0; i<rv[0]->length; i++) {
-	if (inter_sub(count, 1, rv, rv[0]->data[i])) {
-	    fs_rid_vector_append(ret, rv[0]->data[i]);
-	}
-    }
-
-    return ret;
 }
 
 void fs_rid_vector_truncate(fs_rid_vector *rv, int32_t length)
