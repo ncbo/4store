@@ -5,9 +5,6 @@
 
 int main (void)
 {
-  setenv ("CK_RUN_SUITE", "common", 1);
-  setenv ("CK_RUN_CASE", "datatypes", 1);
-
   Suite *test_suite = suite_create("common");
 
   suite_add_tcase (test_suite, make_datatypes_tc() );
