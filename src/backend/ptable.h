@@ -1,13 +1,12 @@
 #ifndef PTABLE_H
 #define PTABLE_H
 
-#include "backend.h"
+#include "../common/4s-datatypes.h"
 
 typedef struct _fs_ptable fs_ptable;
 typedef uint32_t fs_row_id;
 
 /* basic file operations */
-fs_ptable *fs_ptable_open(fs_backend *be, const char *label, int flags);
 fs_ptable *fs_ptable_open_filename(const char *fname, int flags);
 int fs_ptable_close(fs_ptable *pt);
 int fs_ptable_unlink(fs_ptable *pt);

@@ -27,7 +27,6 @@
 #include <sys/mman.h>
 #include <sys/file.h>
 
-#include "backend.h"
 #include "ptree.h"
 #include "chain.h"
 #include "../common/4s-datatypes.h"
@@ -118,15 +117,7 @@ struct _fs_ptree_it {
 int fs_ptree_grow_nodes(fs_ptree *pt);
 int fs_ptree_grow_leaves(fs_ptree *pt);
 
-fs_ptree *fs_ptree_open(fs_backend *be, fs_rid pred, char pk, int flags, fs_ptable *chain)
-{
-    char *filename = g_strdup_printf(FS_PTREE, fs_backend_get_kb(be),
-                                     fs_backend_get_segment(be), pk, pred);
-    fs_ptree *pt = fs_ptree_open_filename(filename, flags, chain);
-    g_free(filename);
 
-    return pt;
-}
 
 node *node_ref(fs_ptree *pt, nodeid n)
 {

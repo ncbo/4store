@@ -4,6 +4,8 @@
 #include "../common/4s-datatypes.h"
 #include "../common/params.h"
 #include "../frontend/decimal.h"
+#include "ptable.h"
+#include "ptree.h"
 
 #define FS_BACKEND_QUIET   1
 #define FS_BACKEND_NO_OPEN 2
@@ -26,6 +28,9 @@ typedef char uuid_string_t[37];
 
 struct _fs_backend;
 typedef struct _fs_backend fs_backend;
+
+fs_ptable *fs_ptable_open(fs_backend *be, const char *label, int flags);
+fs_ptree *fs_ptree_open(fs_backend *be, fs_rid pred, char pk, int flags, fs_ptable *chain);
 
 fs_backend *fs_backend_init(const char *db_name, int flags) __attribute__((warn_unused_result));
 void fs_backend_fini(fs_backend *be);

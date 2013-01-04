@@ -1,14 +1,12 @@
 #ifndef PTREE_H
 #define PTREE_H
 
-#include "backend.h"
 #include "ptable.h"
 
 typedef struct _fs_ptree fs_ptree;
 typedef struct _fs_ptree_it fs_ptree_it;
 typedef uint32_t fs_ptree_leafid;
 
-fs_ptree *fs_ptree_open(fs_backend *be, fs_rid pred, char pk, int flags, fs_ptable *chain);
 
 fs_ptree *fs_ptree_open_filename(const char *filename, int flags, fs_ptable *chain);
 
