@@ -1,3 +1,3 @@
-SUBDIRS = common
+SUBDIRS = common backend
 
 all:

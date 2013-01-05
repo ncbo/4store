@@ -43,3 +43,7 @@ fix_pkg_route.sh
 old_autogen.sh
 
 src/common/datatypestest
+
+
+*.ptable
+*.ptree

@@ -216,8 +216,6 @@ LIBS=$oLIBS
 AC_CONFIG_FILES([Makefile
                  man/Makefile
                  tests/Makefile
-                 tests/check/Makefile
-                 tests/check/common/Makefile
                  src/Makefile
                  src/backend/Makefile
                  src/common/Makefile
@@ -229,6 +227,9 @@ AC_CONFIG_FILES([Makefile
                  src/libs/stemmer/Makefile
                  src/libs/mt19937-64/Makefile
                  src/utilities/Makefile
+                 tests/check/Makefile
+                 tests/check/common/Makefile
+                 tests/check/backend/Makefile
                  src/common/params.h
                  4store-0.pc])
 AC_OUTPUT

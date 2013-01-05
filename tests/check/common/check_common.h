@@ -2,7 +2,7 @@
 #define CHECK_COMMON_H
 
 #ifndef TIMEOUT_TESTS_ENABLED
-#define TIMEOUT_TESTS_ENABLED 1
+#define TIMEOUT_TESTS_ENABLED 0
 #endif
 
 TCase * make_hash_tc (void);
