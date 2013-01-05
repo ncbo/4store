@@ -291,7 +291,14 @@ fs_row_id fs_ptable_new_row(fs_ptable *pt)
         int length = pt->header->length;
         int size = pt->header->size;
         unmap_pt(pt);
-        map_pt(pt, length, size * 2);
+        size_t new_size = size * 2;
+        /* It gets to a point when it is better to not grow
+         * at a 2x ration (NOTE: 4194304 = pow(2,22) = 4M
+         */
+        if (new_size > 4194304) {
+           new_size = size + 4194304;
+        }
+        map_pt(pt, length , new_size);
     }
 
     row *r = &pt->data[pt->header->length];
