@@ -29,6 +29,7 @@
 
 #include "../common/timing.h"
 
+#include "backend.h"
 #include "ptable.h"
 #include "../common/params.h"
 #include "../common/error.h"
@@ -61,6 +62,10 @@ struct _fs_ptable {
   fs_row_id *cons_data;
 };
 
+static char *fname_from_label(fs_backend *be, const char *label)
+{
+    return g_strdup_printf(FS_PTABLE, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
+}
 
 static int unmap_pt(fs_ptable *pt)
 {
@@ -112,6 +117,14 @@ static int map_pt(fs_ptable *pt, long length, long size)
     pt->data = (row *)(pt->header + 1);
 
     return 0;
+}
+
+fs_ptable *fs_ptable_open(fs_backend *be, const char *label, int flags)
+{
+    char *fname = fname_from_label(be, label);
+    fs_ptable *c = fs_ptable_open_filename(fname, flags);
+
+    return c;
 }
 
 fs_ptable *fs_ptable_open_filename(const char *fname, int flags)

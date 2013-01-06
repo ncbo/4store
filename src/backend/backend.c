@@ -205,26 +205,6 @@ fs_backend *fs_backend_init(const char *db_name, int flags)
     return ret;
 }
 
-/* fs_ptable_open depends on the backend so moved here */
-fs_ptable *fs_ptable_open(fs_backend *be, const char *label, int flags)
-{
-    char *fname = g_strdup_printf(FS_PTABLE, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
-    fs_ptable *c = fs_ptable_open_filename(fname, flags);
-
-    return c;
-}
-
-/* fs_ptree_open depends on the backend so moved here */
-fs_ptree *fs_ptree_open(fs_backend *be, fs_rid pred, char pk, int flags, fs_ptable *chain)
-{
-    char *filename = g_strdup_printf(FS_PTREE, fs_backend_get_kb(be),
-                                     fs_backend_get_segment(be), pk, pred);
-    fs_ptree *pt = fs_ptree_open_filename(filename, flags, chain);
-    g_free(filename);
-
-    return pt;
-}
-
 const char *fs_backend_get_kb(fs_backend *be)
 {
     return be->db_name;
