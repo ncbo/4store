@@ -47,3 +47,4 @@ src/common/datatypestest
 
 *.ptable
 *.ptree
+tests/check/backend/check_backend_main
