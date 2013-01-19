@@ -35,8 +35,7 @@ tags
 TAGS
 *.swp
 
-tests/httpd-extras/4s-query
-tests/httpd-extras/results/*
+*-errs
 
 fix_pkg_route.sh
 
@@ -47,6 +46,6 @@ src/common/datatypestest
 
 *.ptable
 *.ptree
-tests/check/backend/check_backend_main
-.lib
+check_*_main
+.libs
 *.mhash
