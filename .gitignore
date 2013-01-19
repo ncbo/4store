@@ -44,8 +44,10 @@ old_autogen.sh
 src/common/datatypestest
 
 
-*.ptable
-*.ptree
 check_*_main
 .libs
 *.mhash
+check/test/backend/tmp/
+*.trs
+
+test-driver

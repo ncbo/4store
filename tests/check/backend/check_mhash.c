@@ -53,7 +53,6 @@ END_TEST
 
 TCase *make_mhash_tc(void) {
   TCase *tc = tcase_create ("mhash");
-  //tcase_add_unchecked_fixture (tc, setup, teardown);
   tcase_add_test(tc, check_mhash_create);
   tcase_set_timeout(tc, 0);
   return tc;

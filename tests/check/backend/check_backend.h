@@ -8,7 +8,8 @@
 TCase * make_ptree_tc (void);
 TCase * make_ptable_tc (void);
 TCase * make_tbchain_tc (void);
-TCase * make_mhash_tc (void);
+TCase * make_rhash_tc (void);
+TCase * make_rhash_tc (void);
 
-#endif /* CHECK_COMMON_H */
+#endif /* CHECK_BACKEND_H */
 

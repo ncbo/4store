@@ -6,6 +6,11 @@
 #include "../../../src/backend/ptree.h"
 #include "../../../src/backend/ptable.h"
 
+START_TEST (check_ptree_create_add)
+{
+}
+END_TEST
+
 TCase *make_ptree_tc(void) {
   TCase *tc = tcase_create ("ptree");
   //tcase_add_unchecked_fixture (tc, setup, teardown);
