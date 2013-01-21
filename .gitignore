@@ -47,7 +47,7 @@ src/common/datatypestest
 check_*_main
 .libs
 *.mhash
-check/test/backend/tmp/
+tests/check/backend/tmp/
 *.trs
 
 test-driver
