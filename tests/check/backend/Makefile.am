@@ -10,11 +10,13 @@ check_backend_main_SOURCES = check_backend.h \
 							check_mhash.c \
 							check_tbchain.c \
 							check_rhash.c \
+							check_prefix_trie.c \
 							check_backend_main.c \
 							$(top_builddir)/src/backend/backend.c \
 							$(top_builddir)/src/backend/ptree.h \
 							$(top_builddir)/src/backend/ptable.h \
 							$(top_builddir)/src/backend/mhash.h \
+							$(top_builddir)/src/backend/prefix-trie.h \
 							$(top_builddir)/src/backend/mchain.h \
 							$(top_builddir)/src/backend/rhash.h \
 							$(top_builddir)/src/backend/tbchain.h
