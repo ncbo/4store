@@ -1849,7 +1849,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
         }
 
         int limit = q->order ? -1 : q->soft_limit;
-        if (q->ordering && q->limit && fs_rid_vector_length(slot[3])) {
+        if (q->ordering && q->limit) {
             fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
             limit = q->limit;
         }
@@ -1910,7 +1910,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
 
         char *scope = NULL;
         int limit = q->order ? -1 : q->soft_limit;
-        if (q->ordering && q->limit && fs_rid_vector_length(slot[3])) {
+        if (q->ordering && q->limit) {
             fs_optimize_pagination(slot,3,q->ordering,fs_rid_vector_length(slot[3]));
             limit = q->limit;
         }
