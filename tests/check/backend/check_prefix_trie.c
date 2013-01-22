@@ -19,6 +19,7 @@ void teardown_hash_pt(void) {
 START_TEST (check_prefixtrie_create)
 {
   printf("trie prefix test\n");
+
 }
 END_TEST
 
