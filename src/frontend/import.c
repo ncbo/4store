@@ -273,7 +273,12 @@ int fs_import_stream_data(fsp_link *link, unsigned char *data, size_t count)
 
 int fs_import_stream_finish(fsp_link *link, int *count, int *errors)
 {
+    int pre_last_count_err = parse_data.count_err;
     raptor_parser_parse_chunk(parse_data.parser, NULL, 0, 1); /* finish */
+    if (pre_last_count_err != parse_data.count_err) {
+        fs_error(LOG_WARNING, "Error parsing the last chunk ignored.");
+        parse_data.count_err = pre_last_count_err;
+    }
     raptor_free_parser(parse_data.parser);
     raptor_free_uri(parse_data.muri);
     g_free(parse_data.model);
