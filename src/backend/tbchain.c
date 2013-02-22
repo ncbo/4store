@@ -415,6 +415,18 @@ int fs_tbchain_get_bit(fs_tbchain *bc, fs_index_node b, fs_tbchain_bit bit)
 
 fs_index_node fs_tbchain_add_triple(fs_tbchain *bc, fs_index_node b, fs_rid triple[3])
 {
+
+    fs_error(LOG_ERR, "call fs_tbchain_add_triple() ");
+    /* before asserting more triples in the chain. make sure
+     * that all slots are marked as FS_RID_GONE */
+    if (fs_tbchain_get_bit(bc, b, FS_TBCHAIN_SUPERSET)) {
+
+    fs_error(LOG_ERR, "call fs_tbchain_it_next() with FS_TBCHAIN_SUPERSET");
+		fs_tbchain_it *it =
+		   fs_tbchain_new_iterator(bc, FS_RID_NULL, b);
+		fs_rid dummy[3];
+		while (fs_tbchain_it_next(it, dummy));
+    }
     if (b == 0 || b == 1) {
         fs_error(LOG_CRIT, "tried to write to block %u\n", b);
 
@@ -682,7 +694,10 @@ int fs_tbchain_it_next(fs_tbchain_it *it, fs_rid triple[3])
     }
 
     while (1) {
+        fs_error(LOG_ERR, "fs_tbchain_it_next %d", it->node);
         if (it->node == 0) {
+
+        fs_error(LOG_ERR, "fs_tbchain_it_next branch");
             triple[0] = FS_RID_NULL;
             triple[1] = FS_RID_NULL;
             triple[2] = FS_RID_NULL;
@@ -692,6 +707,7 @@ int fs_tbchain_it_next(fs_tbchain_it *it, fs_rid triple[3])
 
             return 0;
         } else if (it->node == 1) {
+        fs_error(LOG_ERR, "fs_tbchain_it_next branch");
             fs_error(LOG_CRIT, "iterator ended up at B1");
             triple[0] = FS_RID_NULL;
             triple[1] = FS_RID_NULL;
@@ -699,17 +715,21 @@ int fs_tbchain_it_next(fs_tbchain_it *it, fs_rid triple[3])
 
             return 0;
         } else if (it->pos >= it->tbc->data[it->node].length) {
+        fs_error(LOG_ERR, "fs_tbchain_it_next branch");
             it->node = it->tbc->data[it->node].cont;
             it->pos = 0;
         } else if (it->tbc->data[it->node].data[it->pos][0] == FS_RID_GONE) {
+        fs_error(LOG_ERR, "fs_tbchain_it_next branch");
             (it->pos)++;
         } else {
+        fs_error(LOG_ERR, "fs_tbchain_it_next branch %d",it->superset);
             int ok = 1;
             triple[0] = it->tbc->data[it->node].data[it->pos][0];
             triple[1] = it->tbc->data[it->node].data[it->pos][1];
             triple[2] = it->tbc->data[it->node].data[it->pos][2];
 
             if (it->superset) {
+                fs_error(LOG_ERR, "never detecting sparsity?? %p", it->tbc->be);
                 if (it->tbc->be) {
                     fs_ptree *pt = fs_backend_get_ptree(it->tbc->be, triple[1], 0);
                     fs_rid pair[2] = { it->model, triple[2] };
@@ -717,6 +737,8 @@ int fs_tbchain_it_next(fs_tbchain_it *it, fs_rid triple[3])
                     if (pit) {
                         fs_rid dummy[2];
                         if (!fs_ptree_it_next(pit, dummy)) {
+
+                            fs_error(LOG_ERR, "never detecting sparsity??");
                             ok = 0;
                         }
                         fs_ptree_it_free(pit);
@@ -729,11 +751,13 @@ int fs_tbchain_it_next(fs_tbchain_it *it, fs_rid triple[3])
                 }
             }
 
+    fs_error(LOG_ERR, "ok %d", ok);
             if (ok) {
                 (it->pos)++;
 
                 return 1;
             } else {
+    fs_error(LOG_ERR, "call fs_tbchain_it_next() marks FS_TBCHAIN_SPARSE");
                 it->tbc->data[it->node].data[it->pos][0] = FS_RID_GONE;
                 fs_tbchain_set_bit(it->tbc, it->chain, FS_TBCHAIN_SPARSE);
                 (it->pos)++;
