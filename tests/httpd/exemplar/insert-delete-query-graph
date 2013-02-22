@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+source sparql.sh
+
+update "$EPR" 'INSERT DATA { GRAPH <a> { <x> a <z> . <a> <b> <c> . } }'
+sparql "$EPR" 'SELECT * FROM <a> WHERE { ?s ?p ?o }'
+update "$EPR" 'DELETE DATA { GRAPH <a> { <x> a <z> . <a> <b> <c> . } }'
+update "$EPR" 'INSERT DATA { GRAPH <a> { <x> a <z> . <a> <b> <c> . } }'
