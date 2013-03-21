@@ -225,6 +225,23 @@ static int qbuf_sort_m(const void *va, const void *vb)
     return 0;
 }
 
+static inline int update_cover(fs_rid quad[4], fs_rid min_max_cover[3][2]) {
+    int i = 0;
+    int updated_cover = 0;
+    for (int t=0;t<3;t++) {
+        i = (t == 2 ? 3 : t);
+        if (quad[i] < min_max_cover[0][0]) {
+            updated_cover = 1;
+            min_max_cover[t][0] = quad[i];
+        }
+        if (quad[i] > min_max_cover[0][1]) {
+            updated_cover = 1;
+            min_max_cover[t][1] = quad[i];
+        }
+    }
+    return updated_cover;
+}
+
 int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
 {
     if ((flags & (FS_BIND_BY_SUBJECT | FS_BIND_BY_OBJECT)) == 0) {
@@ -277,6 +294,8 @@ int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
 	    fs_rid last_pred = FS_RID_NULL;
 	    fs_ptree *pt = NULL;
 
+            fs_rid min_max_cover[3][2];
+            int updated_cover = 0;
 	    for (int i=0; i<quad_pos; i++) {
 		if (quad_buffer[i].skip) continue;
 
@@ -284,6 +303,14 @@ int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
 		if (last_pred != pred) {
 		    pt = NULL;
 		    pt = fs_backend_get_ptree(be, pred, pass);
+                    /* min max is agnostic of index by S or O */
+                    if (pass == 0) {
+                        if (updated_cover)
+                            fs_backend_set_min_max(be, last_pred, min_max_cover);
+
+                        updated_cover = 0;
+                        fs_backend_get_min_max(be, pred, min_max_cover);
+                    }
 		    if (!pt) {
 			fs_backend_open_ptree(be, pred);
 			int id = fs_list_add(be->predicates, &pred);
@@ -300,6 +327,14 @@ int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
 		}
 		fs_rid pair[2] = { quad_buffer[i].quad[ds0], quad_buffer[i].quad[ds1] };
 		int ret = fs_ptree_add(pt, quad_buffer[i].quad[pk], pair, force);
+                if (min_max_cover[0][0] != FS_RID_NULL) {
+                    updated_cover = update_cover(quad_buffer[i].quad,min_max_cover);
+                } else {
+                    min_max_cover[0][0] = min_max_cover[0][1] = quad_buffer[i].quad[0]; /* m */
+                    min_max_cover[1][0] = min_max_cover[1][1] = quad_buffer[i].quad[1]; /* s */
+                    min_max_cover[2][0] = min_max_cover[2][1] = quad_buffer[i].quad[3]; /* o */
+                    updated_cover = 1;
+                }
 		if (pass == 0 && ret) {
 		    quad_buffer[i].skip = 1;
 		}
@@ -307,6 +342,8 @@ int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
 		    (be->approx_size)++;
 		}
 	    }
+            if (updated_cover)
+                fs_backend_set_min_max(be, last_pred, min_max_cover);
 	}
     }
     fs_list_flush(be->predicates);
@@ -367,7 +404,7 @@ int fs_quad_import_commit(fs_backend *be, int seg, int flags, int account)
     if (tl) {
 	fs_tlist_close(tl);
     }
-    
+
     TIME("list append");
 
     quad_pos = 0;
