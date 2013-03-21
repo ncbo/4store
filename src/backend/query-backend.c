@@ -152,6 +152,58 @@ static void bind_results(const fs_rid quad[4], int tobind, fs_rid_vector **ret)
     }
 }
 
+static inline int skip_with_min_max(fs_backend *be, fs_rid p, fs_rid_vector *m, fs_rid_vector *s, fs_rid_vector *o) {
+    fs_rid min_max_cover[3][2];
+
+    int ml = fs_rid_vector_length(m);
+    int sl = fs_rid_vector_length(s);
+    int ol = fs_rid_vector_length(o);
+
+    if (!ml && !sl && !ol)
+        return 0;
+
+    fs_backend_get_min_max(be, p, min_max_cover);
+    if (min_max_cover[0][0] == FS_RID_NULL) {
+        fs_error(LOG_ERR,"Min max cover not avalaible for %llx", p);
+        return 0;
+    }
+    int mok = ml ? 0 : 1;
+    int sok = sl ? 0 : 1;
+    int ook = ol ? 0 : 1;
+
+    fs_rid tmp;
+    if (ml) {
+        for(int i=0; i<ml; i++) {
+            tmp = m->data[i];
+            if (min_max_cover[0][0] <= tmp && min_max_cover[0][1] >= tmp) {
+                mok = 1;
+                break;
+            }
+        }
+    }
+    if (!mok) return 1;
+    if (sl) {
+        for(int i=0; i<sl; i++) {
+            tmp = s->data[i];
+            if (min_max_cover[1][0] <= tmp && min_max_cover[1][1] >= tmp) {
+                sok = 1;
+                break;
+            }
+        }
+    }
+    if (!sok) return 1;
+    if (ol) {
+        for(int i=0; i<ol; i++) {
+            tmp = o->data[i];
+            if (min_max_cover[2][0] <= tmp && min_max_cover[2][1] >= tmp) {
+                ook = 1;
+                break;
+            }
+        }
+    }
+    return ook;
+}
+
 fs_rid_vector **fs_bind(fs_backend *be, fs_segment segment, unsigned int tobind,
 			     fs_rid_vector *mv, fs_rid_vector *sv,
 			     fs_rid_vector *pv, fs_rid_vector *ov,
@@ -199,7 +251,7 @@ fs_rid_vector **fs_bind(fs_backend *be, fs_segment segment, unsigned int tobind,
 	    cols++;
 	}
     }
-    
+
     if (!conjuctive) {
         fs_rid_vector_sort(mv);
         fs_rid_vector_uniq(mv, 0);
@@ -263,7 +315,7 @@ fs_rid_vector **fs_bind(fs_backend *be, fs_segment segment, unsigned int tobind,
 
     /* if the query looks like DISINTCT (_ _ p ?o) we can use a set to get a
      * cheap DISTINCT */
-    if (cols == 1 && ((tobind & (FS_BIND_MODEL | FS_BIND_SUBJECT | 
+    if (cols == 1 && ((tobind & (FS_BIND_MODEL | FS_BIND_SUBJECT |
 	FS_BIND_PREDICATE | FS_BIND_OBJECT)) == FS_BIND_OBJECT) && tobind &
 	FS_BIND_DISTINCT && mvl == 0 && svl == 0 && pvl == 1 && ovl == 0) {
 	fs_ptree *pt = fs_backend_get_ptree(be, pv->data[0], 0);
@@ -344,6 +396,8 @@ fs_error(LOG_INFO, "bind() branch");
 #endif
 	    const int ml = mvl ? mvl : 1;
 	    for (int p=0; p<pvl && count<limit; p++) {
+                if (skip_with_min_max(be, pv->data[p], mv, sv, ov))
+                    continue;
 		fs_ptree *pt = fs_backend_get_ptree(be, pv->data[p], 0);
 		if (!pt) continue;
 		for (int m=0; m<ml && count<limit; m++) {
@@ -368,7 +422,9 @@ fs_error(LOG_INFO, "bind() branch");
 #endif
 	    const int ml = mvl ? mvl : 1;
 	    for (int p=0; p<be->ptree_length && count<limit; p++) {
-		fs_backend_ptree_limited_open(be, p); 
+                if (skip_with_min_max(be, be->ptrees_priv[p].pred, mv, sv, ov))
+                    continue;
+		fs_backend_ptree_limited_open(be, p);
 		fs_ptree *pt = be->ptrees_priv[p].ptree_s;
 		if (!pt) continue;
 		for (int m=0; m<ml; m++) {
@@ -397,6 +453,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int ol = ovl ? ovl : 1;
             for (int p=0; p<pvl && count<limit; p++) {
+            if (skip_with_min_max(be, pv->data[p], mv, sv, ov))
+                continue;
 	    fs_ptree *pt = fs_backend_get_ptree(be, pv->data[p], 0);
 	    if (pt) {
 		for (int s=0; s<svl && count<limit; s++) {
@@ -428,6 +486,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int ol = ovl ? ovl : 1;
 	    for (int p=0; p<pvl && count<limit; p++) {
+                if (skip_with_min_max(be, pv->data[p], mv, sv, ov))
+                    continue;
 		fs_ptree *pt = fs_backend_get_ptree(be, pv->data[p], 0);
 		if (!pt) continue;
 		/* we have to use values from s and p for same row */
@@ -460,6 +520,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int sl = svl ? svl : 1;
             for (int p=0; p<pvl && count<limit; p++) {
+            if (skip_with_min_max(be, pv->data[p], mv, sv, ov))
+                continue;
 	    fs_ptree *pt = fs_backend_get_ptree(be, pv->data[p], 1);
 	    if (pt) {
 		for (int o=0; o<ovl && count<limit; o++) {
@@ -489,6 +551,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int sl = svl ? svl : 1;
 	    for (int p=0; p<pvl && count<limit; p++) {
+                if (skip_with_min_max(be, pv->data[p], mv, sv, ov))
+                    continue;
 		fs_ptree *pt = fs_backend_get_ptree(be, pv->data[p], 1);
 		if (!pt) continue;
 		/* we need values from teh same row for o and p */
@@ -521,6 +585,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int ol = ovl ? ovl : 1;
 	    for (int p=0; p<be->ptree_length && count<limit; p++) {
+                if (skip_with_min_max(be, be->ptrees_priv[p].pred, mv, sv, ov))
+                    continue;
                 fs_backend_ptree_limited_open(be, p);
 		fs_ptree *pt = be->ptrees_priv[p].ptree_s;
 		if (!pt) continue;
@@ -552,6 +618,8 @@ fs_error(LOG_INFO, "bind() branch");
 	    const int ml = mvl ? mvl : 1;
 	    const int sl = svl ? svl : 1;
 	    for (int p=0; p<be->ptree_length && count<limit; p++) {
+                if (skip_with_min_max(be, be->ptrees_priv[p].pred, mv, sv, ov))
+                    continue;
                 fs_backend_ptree_limited_open(be, p);
 		fs_ptree *pt = be->ptrees_priv[p].ptree_o;
 		if (!pt) continue;
@@ -738,7 +806,7 @@ fs_rid_vector **fs_reverse_bind(fs_backend *be, fs_segment segment,
 
     fs_error(LOG_CRIT, "tried to reverse bind, requesting unsupported slots, "
 	     "cols: %d, flags: %08x, [%p, %p]", cols, tobind, inter[0], inter[1]);
-    
+
     fs_rid_vector_free(inter[0]);
     fs_rid_vector_free(inter[1]);
 
