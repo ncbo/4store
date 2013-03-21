@@ -34,6 +34,11 @@ struct _fs_backend {
     fs_list *pending_insert;
     fs_rhash *res;
     fs_mhash *models;
+
+    /* min max cover */
+    fs_mhash *mm_index; /* one entry per predicate */
+    fs_ptable *mm_values; /* per predicate min/max subject, object and model */
+
     fs_tbchain *model_list;
     fs_list *predicates;
     fs_ptable *pairs;

@@ -12,6 +12,8 @@
 /* legacy */
 #define FS_QUIET     1
 
+#define FS_MIN_MAX_COVER 0x1
+
 #define FS_OPEN_LEX     0x01
 #define FS_OPEN_LIST    0x02
 #define FS_OPEN_DEL     0x08
@@ -68,5 +70,8 @@ int fs_backend_model_set_usage(fs_backend *be, int seg, fs_rid model, fs_index_n
 int fs_backend_model_dirs(fs_backend *be);
 /* return true if were storing model data in files as opposed to a tblist */
 int fs_backend_model_files(fs_backend *be);
+
+int fs_backend_get_min_max(fs_backend *be, fs_rid predicate, fs_rid min_max_cover[3][2]);
+int fs_backend_set_min_max(fs_backend *be, fs_rid predicate, fs_rid min_max_cover[3][2]);
 
 #endif

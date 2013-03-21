@@ -606,6 +606,21 @@ int fs_backend_open_files_intl(fs_backend *be, fs_segment seg, int flags, int fi
 	}
     }
 
+    if ((files & FS_OPEN_ALL) && FS_MIN_MAX_COVER) {
+        be->mm_index = fs_mhash_open(be, "minmax", flags);
+	if (!be->mm_index) {
+	    fs_error(LOG_CRIT, "failed to open minmax.mhash file");
+
+	    return 1;
+	}
+        be->mm_values = fs_ptable_open(be, "minmax", flags | O_RDWR);
+	if (!be->mm_values) {
+	    fs_error(LOG_CRIT, "failed to open minmax.ptable file");
+
+	    return 1;
+	}
+    }
+
     if (!be->predicates) {
 	be->predicates = fs_list_open(be, "predicates", sizeof(fs_rid), flags);
 	fs_rid pred;
@@ -793,4 +808,38 @@ int fs_backend_model_files(fs_backend *be)
     return be->model_files;
 }
 
+int fs_backend_set_min_max(fs_backend *be, fs_rid predicate, fs_rid min_max_cover[3][2]) {
+    fs_index_node inode;
+    int res = fs_mhash_get(be->mm_index, predicate, &inode);
+    if (res || !inode) {
+        inode = fs_ptable_new_row(be->mm_values);
+    }
+    for (int i=0;i<3;i++) {
+        inode = fs_ptable_add_pair(be->mm_values, inode, min_max_cover[i]);
+    }
+    res = fs_mhash_put(be->mm_index, predicate, inode);
+    if (!res) {
+	fs_error(LOG_ERR, "Unable to put mix man cover in mash %llx",predicate);
+    }
+    return 0;
+}
+
+int fs_backend_get_min_max(fs_backend *be, fs_rid predicate, fs_rid min_max_cover[3][2]) {
+    fs_index_node inode;
+    int res = fs_mhash_get(be->mm_index, predicate, &inode);
+    if (!res && inode) {
+        /* 6 elements is equivalent to 3 pair lookups */
+        fs_rid pair[2];
+        for (int i=0;i<3;i++) {
+            int res_ptable = fs_ptable_get_row(be->mm_values, inode, pair);
+            min_max_cover[i][0] = pair[0];
+            min_max_cover[i][1] = pair[1];
+            inode = fs_ptable_get_next(be->mm_values, inode);
+        }
+        return 0;
+    }
+    /* all set to FS_RID_NULL */
+    memset(min_max_cover, 0, 6 * sizeof(fs_rid));
+    return 1;
+}
 /* vi:set ts=8 sts=4 sw=4: */
