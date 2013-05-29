@@ -594,7 +594,7 @@ int __fs_rule_translation_table_fill(
         /* rule part is NOT var */
         if (!rule_vars[i]) { 
             /* bind part is NOT var */ 
-            if (bind[i] && bind[i]->length == 1  && bind[i]->data[0] != FS_RID_NULL) { 
+            if (bind[i] && bind[i]->length > 0  && bind[i]->data[0] != FS_RID_NULL) { 
             if (vrid_rule[i] && vrid_rule[i]->length == 1  
                     && vrid_rule[i]->data[0] != FS_RID_NULL) { 
                  if (vrid_rule[i]->data[0] != bind[i]->data[0]) {
@@ -651,8 +651,9 @@ rasqal_variable ** fs_rule_vars_in_quad_position(rasqal_variable **vars,int tobi
 
 int __fs_rule_bind_contains_query_vars(fs_rule_bind *bind) {
     for (int i=0;i<4;i++) {
-        if (bind->vars[i] &&
-            !fs_rule_var_is_internal(bind->vars[i]))
+        if (bind->vars[i] && 
+            !fs_rule_var_is_internal(bind->vars[i]) &&
+            !(bind->vrid_quad[i] && bind->vrid_quad[i]->length > 0 && bind->vrid_quad[i]->data[0] != FS_RID_NULL))
             return 1;
     }
     return 0;
