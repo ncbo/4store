@@ -698,8 +698,14 @@ fs_value fs_expression_eval(fs_query *q, int row, int block, rasqal_expression *
             if (fs_is_error(v)) {
                 g_string_free(concat, TRUE);
 
-                return v;
+                return fs_value_error(FS_ERROR_INVALID_TYPE, NULL);
             }
+            if (v.rid == FS_RID_NULL) {
+                g_string_free(concat, TRUE);
+
+                return fs_value_error(FS_ERROR_INVALID_TYPE, NULL);
+            }
+
             v = fs_value_fill_lexical(q, v);
             g_string_append(concat, v.lex);
         }
@@ -2623,7 +2629,7 @@ nextrow: ;
                     q->offset_aggregate--;
                     q->agg_index++;
                 }
-                if (q->limit >= 0 && q->rows_output >= q->limit) {
+                if (q->limit >= 0 && q->rows_output >= (q->offset + q->limit)) {
                     if (grows) fs_rid_vector_free(grows);
                     return NULL;
                 }
@@ -2709,7 +2715,7 @@ nextrow: ;
     }
 
     const int rows = q->length;
-    if (!q->aggregate_order && q->limit >= 0 && q->rows_output >= q->limit) {
+    if (!q->aggregate_order && q->limit >= 0 && q->rows_output >= (q->offset + q->limit)) {
         if (grows) fs_rid_vector_free(grows);
         return NULL;
     }
@@ -2761,10 +2767,11 @@ nextrow: ;
                 return NULL;
             }
             q->row = next_row;
-            if (!q->aggregate)
+            if (!q->aggregate) {
                 goto nextrow;
-            else {
-                if(!q->apply_constraints) q->apply_constraints = fs_new_bit_array(q->group_length);
+            } else {
+                if(!q->apply_constraints) 
+                    q->apply_constraints = fs_new_bit_array(q->group_length);
                 fs_bit_array_set(q->apply_constraints,row_agg,0);
             }
         } else if (q->aggregate) {
@@ -2866,8 +2873,14 @@ nextrow: ;
     }
 
     q->row = next_row;
-    if (!q->aggregate_order)
+    if (!q->aggregate_order) {
+        if (q->rows_output < q->offset) {
+            q->rows_output++;
+            q->row = next_row;
+            goto nextrow;
+        }
         q->rows_output++;
+    }
     if (grows) fs_rid_vector_free(grows);
 
     if (!q->group_by && q->aggregate) {
