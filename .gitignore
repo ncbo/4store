@@ -50,3 +50,5 @@ src/common/datatypestest
 tests/check/backend/check_backend_main
 .lib
 *.mhash
+
+test-driver
