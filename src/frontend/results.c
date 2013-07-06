@@ -2322,6 +2322,10 @@ static void output_json(fs_query *q, int flags, FILE *out)
             }
             fprintf(out, "   {");
             for (int c=0; c<cols; c++) {
+// POTENTIAL OPTIMISATION
+//                if (row[c].lex == NULL) {
+//                    continue;
+//                }
                 if (c) fputs(",\n    ", out);
                 fprintf(out, "\"%s\":{", header[c].name);
                 int esclen = 0;
