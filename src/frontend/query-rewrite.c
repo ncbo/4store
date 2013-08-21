@@ -1080,7 +1080,6 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) 
                     fs_rid_vector_append((c+1)->vals,arid);
                 } else if (brid > arid) {
                     break;
-                } else {
                 }
                 vb++;
             }
