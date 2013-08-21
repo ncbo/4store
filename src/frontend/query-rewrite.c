@@ -12,7 +12,7 @@
 #include "../common/4s-hash.h"
 #include "../common/error.h"
 
-//#define DEBUG_RULES 0
+//define DEBUG_RULES 3
 
 static fs_rule_context gbl_rule_context;
 static GStaticMutex rule_init_mutex;
@@ -1069,6 +1069,8 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) 
     fs_rid brid = FS_RID_NULL;
     for (int va=0; va < abx->vals->length; va++) {
         arid = abx->vals->data[a->vals->data[va]];
+        vb = 0;
+        brid = FS_RID_NULL;
         if (arid >= brid) {
             while (vb < bbx->vals->length) {
                 brid = bbx->vals->data[b->vals->data[vb]];
@@ -1078,6 +1080,7 @@ fs_binding *fs_rule_binding_merge(fs_binding *a, fs_binding *b, double *elapse) 
                     fs_rid_vector_append((c+1)->vals,arid);
                 } else if (brid > arid) {
                     break;
+                } else {
                 }
                 vb++;
             }
