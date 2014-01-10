@@ -78,7 +78,7 @@ static int cors_support = -1; /* cross-origin resource sharing (CORS) support */
 static fs_query_state *query_state;
 
 static GThreadPool* pool;
-#define QUERY_THREAD_POOL_SIZE 16
+#define QUERY_THREAD_POOL_SIZE 8
 
 static gboolean recv_fn (GIOChannel *source, GIOCondition condition, gpointer data);
 static void http_import_queue_remove(client_ctxt *ctxt);
