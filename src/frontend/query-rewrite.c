@@ -1298,7 +1298,7 @@ int fs_rule_flags_from_string(const char *srules) {
         return 0;
 
     if (!strcmp(srules, "DEFAULT"))
-        return 0x0001; /* only subp */
+        return 0; /* by default no reasoning */
     int flag = 0;
     if (strstr(srules,"SUBP"))
         flag |= 0x0001;
