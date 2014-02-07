@@ -1835,7 +1835,7 @@ static int fs_handle_query_triple(fs_query *q, int block, rasqal_triple *t)
     /* if theres a patterns with lots of bindings for the subject and one
      * predicate we can bind_many it */
     if (fs_opt_is_const(oldb, t->subject) &&
-        (fs_opt_num_vals(oldb, t->subject) <= fs_opt_num_vals(oldb, t->object) ||
+        (fs_opt_num_vals(oldb, t->subject) >= fs_opt_num_vals(oldb, t->object) ||
         (t->predicate->type == RASQAL_LITERAL_URI &&
          !strcmp((char *)raptor_uri_as_string(t->predicate->value.uri), RDF_TYPE)))) {
         int numbindings = 0;
