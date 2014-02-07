@@ -170,6 +170,7 @@ fs_rid_vector **fs_bind(fs_backend *be, fs_segment segment, unsigned int tobind,
 
 
     #ifdef DEBUG_BRANCH
+        fs_error(LOG_ERR,"conjuctive %d",conjuctive);
         fs_error(LOG_ERR,"mv length %d",fs_rid_vector_length(mv));
         fs_error(LOG_ERR,"sv length %d",fs_rid_vector_length(sv));
         fs_error(LOG_ERR,"pv length %d",fs_rid_vector_length(pv));
