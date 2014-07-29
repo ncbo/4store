@@ -750,6 +750,17 @@ int fs_query_process_pattern(fs_query *q, rasqal_graph_pattern *pattern,
             combinations *= q->bb[0][i].vals->length;
         }
     }
+
+    /* make sure variables in project expressions are marked as needed */
+    if (vars) {
+        for (int i=0; i < q->num_vars; i++) {
+            rasqal_variable *v = raptor_sequence_get_at(vars, i);
+            if (v->expression) {
+                check_variables(q, v->expression, 0);
+            }
+        }
+    }
+
     if (bound_variables > 1) {
         for (int i=0; q->bb[0][i].name; i++) {
             if (!comb_factor[i]) {
@@ -764,16 +775,6 @@ int fs_query_process_pattern(fs_query *q, rasqal_graph_pattern *pattern,
             }
             fs_rid_vector_free(q->bb[0][i].vals);
             q->bb[0][i].vals = newv;
-        }
-    }
-
-    /* make sure variables in project expressions are marked as needed */
-    if (vars) {
-        for (int i=0; i < q->num_vars; i++) {
-            rasqal_variable *v = raptor_sequence_get_at(vars, i);
-            if (v->expression) {
-                check_variables(q, v->expression, 0);
-            }
         }
     }
 
