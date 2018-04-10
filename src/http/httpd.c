@@ -55,7 +55,7 @@
 
 #define IS_CORS(ctxt) (cors_support && \
   (ctxt->method == FS_HTTP_HEAD || ctxt->method == FS_HTTP_OPTIONS \
-   || ctxt->method == FS_HTTP_GET) && \
+   || ctxt->method == FS_HTTP_POST || ctxt->method == FS_HTTP_GET) && \
   g_hash_table_lookup(ctxt->headers, "origin"))
 
 /* file globals */
@@ -101,9 +101,25 @@ static void fs_free_global_elements() {
   }
 }
 
+static const gchar * get_http_log_dir(void)
+{
+    static gchar * _fs_log_root = NULL;
+    const char *env_setting;
+    if(NULL == _fs_log_root) {
+        env_setting = getenv(FS_HTTP_LOG_ENV_VAR);
+        if(env_setting) {
+            _fs_log_root = g_strdup((const gchar *)env_setting);
+        } else {
+            _fs_log_root = strdup((const gchar *)FS_HTTP_LOG);
+        }
+    }
+    return _fs_log_root;
+}
+
 static void query_log_open (const char *kb_name)
 {
-  char *filename = g_strdup_printf("/var/log/4store/query-%s.log", kb_name);
+  char *filename = g_strdup_printf("%s/query-%s.log", get_http_log_dir(), kb_name);
+
   ql_file= fopen(filename, "a");
   if (ql_file) {
     fprintf(ql_file, "\n# 4s-httpd for KB=%s, pid=%d #####\n", kb_name, getpid());
@@ -417,6 +433,10 @@ static void http_query_worker(gpointer data, gpointer user_data)
       type = "json";
     } else if (accept && strstr(accept, "text/tab-separated-values")) {
       type = "text";
+    } else if (accept && strstr(accept, "application/n-triples")) {
+      type = "text";
+      fprintf(fp, "Content-Type: application/n-triples\r\n\r\n");
+      flags = 0;
     } else if (accept && strstr(accept, "text/csv")) {
       type = "csv";
     } else if (accept && strstr(accept, "text/plain")) {
@@ -1307,12 +1327,14 @@ static void http_post_request(client_ctxt *ctxt, gchar *url, gchar *protocol)
     g_free(form);
 
   } else if (!strcmp(url, "/update/")) {
-    const char *form_type = g_hash_table_lookup(ctxt->headers, "content-type");
+    char *form_type = just_content_type(ctxt);
     if (!form_type || strcasecmp(form_type, "application/x-www-form-urlencoded")) {
       http_error(ctxt, "400 4store only implements application/x-www-form-urlencoded");
       http_close(ctxt);
+      g_free(form_type);
       return;
     }
+    g_free(form_type);
 
     const char *length = g_hash_table_lookup(ctxt->headers, "content-length");
     ctxt->bytes_left = length ? atol(length) : 0;

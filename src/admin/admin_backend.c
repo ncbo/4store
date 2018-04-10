@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 
 #include "../common/params.h"
+#include "../common/4s-store-root.h"
 #include "../common/error.h"
 #include "../backend/metadata.h"
 
@@ -74,7 +75,7 @@ int fsab_kb_info_init(fsa_kb_info *ki, const unsigned char *kb_name, int *err)
     ki->name = (unsigned char *)strdup((char *)kb_name);
 
     /* check if kb exists */
-    len = (strlen(FS_KB_DIR)-2) + strlen((char *)kb_name) + 1;
+    len = (strlen(fs_get_kb_dir_format())-2) + strlen((char *)kb_name) + 1;
     path = (char *)malloc(len * sizeof(char));
     if (path == NULL) {
         errno = ENOMEM;
@@ -83,7 +84,7 @@ int fsab_kb_info_init(fsa_kb_info *ki, const unsigned char *kb_name, int *err)
     }
 
     /* generate full path to kb dir */
-    rv = sprintf(path, FS_KB_DIR, kb_name);
+    rv = sprintf(path, fs_get_kb_dir_format(), kb_name);
     if (rv < 0) {
         *err = ADM_ERR_GENERIC;
         fsa_error(LOG_DEBUG, "sprintf failed");
@@ -109,7 +110,7 @@ int fsab_kb_info_init(fsa_kb_info *ki, const unsigned char *kb_name, int *err)
     }
 
     /* alloc mem for string path to runtime.info */
-    len = (strlen(FS_RI_FILE)-2) + strlen((char *)kb_name) + 1;
+    len = (strlen(fs_get_ri_file_format())-2) + strlen((char *)kb_name) + 1;
     path = (char *)malloc(len * sizeof(char));
     if (path == NULL) {
         errno = ENOMEM;
@@ -118,7 +119,7 @@ int fsab_kb_info_init(fsa_kb_info *ki, const unsigned char *kb_name, int *err)
     }
 
     /* generate full path to runtime.info */
-    rv = sprintf(path, FS_RI_FILE, kb_name);
+    rv = sprintf(path, fs_get_ri_file_format(), kb_name);
     if (rv < 0) {
         *err = ADM_ERR_GENERIC;
         fsa_error(LOG_DEBUG, "sprintf failed");
@@ -242,10 +243,10 @@ fsa_kb_info *fsab_get_local_kb_info_all(int *err)
     fsa_kb_info *cur_ki = NULL;
     int rv;
 
-    dp = opendir(FS_STORE_ROOT);
+    dp = opendir(fs_get_store_root());
     if (dp == NULL) {
         fsa_error(LOG_ERR, "failed to open directory '%s': %s",
-                  FS_STORE_ROOT, strerror(errno));
+                  fs_get_store_root(), strerror(errno));
         *err = ADM_ERR_GENERIC;
         return NULL;
     }
