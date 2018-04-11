@@ -34,6 +34,7 @@ root
 tags
 TAGS
 *.swp
+website
 
 tests/httpd-extras/4s-query
 tests/httpd-extras/results/*

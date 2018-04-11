@@ -32,6 +32,7 @@
 #include "backend.h"
 #include "ptable.h"
 #include "../common/params.h"
+#include "../common/4s-store-root.h"
 #include "../common/error.h"
 
 #define PTABLE_ID 0x4a585430 /* JXT0 */
@@ -64,7 +65,7 @@ struct _fs_ptable {
 
 static char *fname_from_label(fs_backend *be, const char *label)
 {
-    return g_strdup_printf(FS_PTABLE, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
+    return g_strdup_printf(fs_get_ptable_format(), fs_backend_get_kb(be), fs_backend_get_segment(be), label);
 }
 
 static int unmap_pt(fs_ptable *pt)
@@ -133,11 +134,13 @@ fs_ptable *fs_ptable_open_filename(const char *fname, int flags)
 
     if (sizeof(struct ptable_header) != 512) {
         fs_error(LOG_CRIT, "ptable header size not 512 bytes");
+        free(pt);
         return NULL;
     }
     pt->fd = open(fname, FS_O_NOATIME | flags, FS_FILE_MODE);
     if (pt->fd == -1) {
         fs_error(LOG_CRIT, "failed to open ptable %s: %s", fname, strerror(errno));
+        free(pt);
         return NULL;
     }
     pt->filename = g_strdup(fname);

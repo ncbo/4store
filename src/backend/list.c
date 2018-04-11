@@ -32,6 +32,7 @@
 #include "lock.h"
 #include "../common/error.h"
 #include "../common/timing.h"
+#include "../common/4s-store-root.h"
 
 #define LIST_BUFFER_SIZE 256
 
@@ -63,7 +64,7 @@ struct _fs_list {
 
 fs_list *fs_list_open(fs_backend *be, const char *label, size_t width, int flags)
 {
-    char *filename = g_strdup_printf(FS_LIST, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
+  char *filename = g_strdup_printf(fs_get_list_format(), fs_backend_get_kb(be), fs_backend_get_segment(be), label);
     fs_list *l = fs_list_open_filename(filename, width, flags);
     g_free(filename);
 
@@ -84,23 +85,23 @@ fs_list *fs_list_open_filename(const char *filename, size_t width, int flags)
     l->fd = open(filename, FS_O_NOATIME | flags, FS_FILE_MODE);
     if (l->fd == -1) {
         fs_error(LOG_ERR, "failed to open list file '%s': %s", l->filename, strerror(errno));
-
+        free(l);
         return NULL;
     }
     if ((flags & (O_WRONLY | O_RDWR)) && flock(l->fd, LOCK_EX) == -1) {
         fs_error(LOG_ERR, "failed to open list: %s, cannot get lock: %s", filename, strerror(errno));
-
+        free(l);
         return NULL;
     }
     off_t end = lseek(l->fd, 0, SEEK_END);
     if (end == -1) {
         fs_error(LOG_CRIT, "failed to open list: %s, cannot seek to end", filename);
-
+        free(l);
         return NULL;
     }
     if (end % width != 0) {
         fs_error(LOG_CRIT, "failed to open list: %s, length not multiple of data size", filename);
-
+        free(l);
         return NULL;
     }
     l->offset = end / width;
@@ -110,7 +111,7 @@ fs_list *fs_list_open_filename(const char *filename, size_t width, int flags)
     if (l->fd == -1) {
         fs_error(LOG_CRIT, "failed to open list %s: %s", filename,
                 strerror(errno));
-
+        free(l);
         return NULL;
     }
 

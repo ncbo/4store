@@ -31,6 +31,7 @@
 #include "tbchain.h"
 #include "ptree.h"
 #include "../common/params.h"
+#include "../common/4s-store-root.h"
 #include "../common/error.h"
 #include "../common/timing.h"
 
@@ -92,7 +93,7 @@ static fs_index_node fs_tbchain_new_block(fs_tbchain *bc);
 
 static char *fname_from_label(fs_backend *be, const char *label)
 {
-    return g_strdup_printf(FS_TBCHAIN, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
+    return g_strdup_printf(fs_get_tbchain_format(), fs_backend_get_kb(be), fs_backend_get_segment(be), label);
 }
 
 static int unmap_bc(fs_tbchain *bc)
@@ -164,6 +165,7 @@ fs_tbchain *fs_tbchain_open_filename(const char *fname, int flags)
     bc->fd = open(fname, FS_O_NOATIME | flags, FS_FILE_MODE);
     if (bc->fd == -1) {
         fs_error(LOG_CRIT, "failed to open chain %s: %s", fname, strerror(errno));
+        free(bc);
         return NULL;
     }
     bc->filename = g_strdup(fname);
@@ -171,16 +173,19 @@ fs_tbchain *fs_tbchain_open_filename(const char *fname, int flags)
 
     if (sizeof(*header) != 512) {
         fs_error(LOG_CRIT, "tbchain header size is %zd, not 512 bytes", sizeof(header));
+        free(bc);
         return NULL;
     }
     if (sizeof(fs_tblock) != FS_TBLOCK_SIZE) {
         fs_error(LOG_CRIT, "tblock size is %zd, not %d bytes", sizeof(fs_tblock), FS_TBLOCK_SIZE);
+        free(bc);
         return NULL;
     }
     int init_reqd = 0;
 
     if (bc->flags & O_TRUNC && ftruncate(bc->fd, sizeof(*header))) {
         fs_error(LOG_CRIT, "ftruncate failed on %s: %s", fname, strerror(errno));
+        free(bc);
         return NULL;
     }
 
@@ -191,6 +196,7 @@ fs_tbchain *fs_tbchain_open_filename(const char *fname, int flags)
     if (header == MAP_FAILED || header == NULL) {
         munmap(header, sizeof(*header));
         fs_error(LOG_CRIT, "header mmap failed for %s: %s", bc->filename, strerror(errno));
+        free(bc);
         return NULL;
     }
 
