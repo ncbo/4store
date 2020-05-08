@@ -32,7 +32,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#if defined(__OpenBSD__)
+#if defined(__OpenBSD__) || defined(__FreeBSD__)
 # include <netinet/in.h>
 #endif
 
@@ -989,6 +989,7 @@ static int start_or_stop_stores(int action)
                             break;
                         case ADM_ERR_KB_NOT_EXISTS:
                             print_colour("store_not_found", ANSI_COLOUR_RED);
+                            n_errors += 1;
                             break;
                         default:
                             print_colour("unknown", ANSI_COLOUR_RED);
@@ -1009,6 +1010,7 @@ static int start_or_stop_stores(int action)
                             break;
                         case ADM_ERR_KB_NOT_EXISTS:
                             print_colour("store_not_found", ANSI_COLOUR_RED);
+                            n_errors += 1;
                             break;
                         default:
                             print_colour("unknown", ANSI_COLOUR_RED);

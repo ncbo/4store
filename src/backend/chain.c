@@ -33,13 +33,14 @@
 #include "bucket.h"
 #include "chain.h"
 #include "../common/params.h"
+#include "../common/4s-store-root.h"
 #include "../common/error.h"
 
 #define CHAIN_ID 0x4a584230
 
 static char *fname_from_label(fs_backend *be, const char *label)
 {
-    return g_strdup_printf(FS_CHAIN, fs_backend_get_kb(be), fs_backend_get_segment(be), label);
+  return g_strdup_printf(fs_get_chain_format(), fs_backend_get_kb(be), fs_backend_get_segment(be), label);
 }
 
 static int unmap_bc(fs_chain *bc)
@@ -102,7 +103,7 @@ fs_chain *fs_chain_open_filename(const char *fname, int flags)
     bc->fd = open(fname, FS_O_NOATIME | flags, FS_FILE_MODE);
     if (bc->fd == -1) {
         fs_error(LOG_CRIT, "failed to open chain %s: %s", fname, strerror(errno));
-
+        free(bc);
         return NULL;
     }
     bc->filename = g_strdup(fname);
@@ -116,7 +117,7 @@ fs_chain *fs_chain_open_filename(const char *fname, int flags)
     }
     if (header.id != CHAIN_ID) {
         fs_error(LOG_CRIT, "%s does not look like a chain file", bc->filename);
-
+        free(bc);
         return NULL;
     }
     if (map_bc(bc, header.length, header.size)) {
